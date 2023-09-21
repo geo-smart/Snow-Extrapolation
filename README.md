@@ -86,8 +86,6 @@ Existing model research and development explores and compares different algorith
 
 ### Proposed methods/tools
 
-What new approaches would you like to try to implement to address your specific question(s) or application(s)?
-
 A two-pronged approach would be ideal to improve model performance: 1) Feature Engineering and selection and 2) Algorithm optimization.
 With the focus of the Hack Week on algorithm optimization, this will be the focus.
 The project is open to explore any ML algorithm, whether simple or complex.
