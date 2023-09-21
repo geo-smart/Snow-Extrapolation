@@ -7,7 +7,7 @@ This project builds on the ongoing Cooperative Institute for Research-to-Operati
 
 List all participants on the project.
 
-* Dr. Ryan C. Johnson - The University of Alabama
+* [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
 * Team member
 * Team member
 * Team member
@@ -50,7 +50,6 @@ The ultimate goal of each folder is to function a tutorial to get new users intr
 * `environment.yml`
 <br> `conda` environment description needed to run this project.
 * `README.md`
-<br> Description of the project (see suggested headings below)
 
 
 ## `contributors`
