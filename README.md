@@ -2,6 +2,8 @@
 
 This project builds on the ongoing Cooperative Institute for Research-to-Operations in Hydrology ([CIROH](https://ciroh.ua.edu/)) National Snow Model project to provide operational, near-real-time snow-water-equivalent (SWE) estimates for updating the state of the snowpack within the National Water Model ([NWM](https://water.noaa.gov/about/nwm)).
 
+The [Getting started](./Getting%20Started.md) file will help new users create a virtual environment and install the correct packages using the [requirements.text](./requirements.txt).
+
 
 ### Collaborators
 
