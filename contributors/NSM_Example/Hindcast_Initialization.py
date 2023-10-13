@@ -78,7 +78,7 @@ def Hindcast_Initialization(cwd, datapath, new_year, threshold, Region_list):
         datelist.append(dt)
         
      #makes sure all prediction locations for testing are included in the simulation   
-    addPredictionLocations(Region_list, datapath, cwd, datelist[0])
+    #addPredictionLocations(Region_list, datapath, cwd, datelist[0])
     
     print('New simulation start files complete')
     return datelist
