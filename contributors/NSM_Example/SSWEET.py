@@ -59,6 +59,10 @@ def load_Predictions(cwd):
 #Function to convert predictions into parity plot plus evaluation metrics
 def parityplot(RegionTest):
     
+    #Make sure dates are in datetime formate
+    for key in RegionTest.keys():
+        RegionTest[key]['Date'] = pd.to_datetime(RegionTest[key]['Date'])
+    
     #Get regions
     Regions = list(RegionTest.keys())
     
@@ -221,6 +225,8 @@ def Model_Vs(RegionTest,metric,model_output, datapath):
         xlabel = 'Previous SWE Estimate'
     if metric == 'Lat':
         xlabel = 'Latitude'
+    if metric == 'prev_SWE_error':
+        xlabel = 'Error in Previous SWE Estimate'
     
     sns.set(style='ticks')
     sns.relplot(data=Compare_DF, x=metric, y=Y, hue='Region', hue_order=Regions, aspect=1.61)
@@ -371,6 +377,10 @@ def df_transpose(df, obs):
 #def Map_Plot_Eval(self, freq, df, size):
 def Map_Plot_Eval(datapath, RegionTest, yaxis, error_metric):   
     
+    #Make sure dates are in datetime formate
+    for key in RegionTest.keys():
+        RegionTest[key]['Date'] = pd.to_datetime(RegionTest[key]['Date'])
+    
     #correctly configure dataframes for plotting
     pred, obs, err = ts_pred_obs_err(map_data_prep(RegionTest))
     
@@ -487,6 +497,8 @@ def Map_Plot_Eval(datapath, RegionTest, yaxis, error_metric):
                 
 
         title_size = 14
+        
+        #display(df)
 
         #create graph and convert to json
         graph = vincent.Scatter(df, height=300, width=500)

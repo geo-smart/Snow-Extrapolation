@@ -64,14 +64,17 @@ warnings.filterwarnings("ignore")
 
 
 class SWE_Prediction():
-    def __init__(self, cwd, date, delta=7):
+    def __init__(self, cwd,datapath, date, delta=7, Regions= ['N_Sierras']):
         self.date = date
         self.delta = delta
         self.prevdate = pd.to_datetime(date) - timedelta(days=delta)
         self.prevdate = self.prevdate.strftime('%Y-%m-%d')
+        self.Regions = Regions
 
         # set path directory
         self.cwd = cwd
+        self.datapath = datapath
+  
 
         # make other date tags
         #  self.datestr = self.date.strftime.strftime('%Y-%m-%d')
@@ -88,55 +91,71 @@ class SWE_Prediction():
         # self.prevcol = py+'-'+pm+'-'+p
 
         # Define Model Regions
-        self.Region_list = ['N_Sierras',
-                            'S_Sierras_High',
-                            'S_Sierras_Low',
-                            'Greater_Yellowstone',
-                            'N_Co_Rockies',
-                            'SW_Mont',
-                            'SW_Co_Rockies',
-                            'GBasin',
-                            'N_Wasatch',
-                            'N_Cascade',
-                            'S_Wasatch',
-                            'SW_Mtns',
-                            'E_WA_N_Id_W_Mont',
-                            'S_Wyoming',
-                            'SE_Co_Rockies',
-                            'Sawtooth',
-                            'Ca_Coast',
-                            'E_Or',
-                            'N_Yellowstone',
-                            'S_Cascade',
-                            'Wa_Coast',
-                            'Greater_Glacier',
-                            'Or_Coast'
-                            ]
+        self.Region_list = Regions
+        #['N_Sierras',
+                           # 'S_Sierras_High',
+                           # 'S_Sierras_Low']
+        #,
+          #                  'Greater_Yellowstone',
+           #                 'N_Co_Rockies',
+            #                'SW_Mont',
+             #               'SW_Co_Rockies',
+              #              'GBasin',
+               #             'N_Wasatch',
+                #            'N_Cascade',
+                 #           'S_Wasatch',
+                  #          'SW_Mtns',
+                   #         'E_WA_N_Id_W_Mont',
+                    #        'S_Wyoming',
+                     #       'SE_Co_Rockies',
+                      #      'Sawtooth',
+                       #     'Ca_Coast',
+                        #    'E_Or',
+                         #   'N_Yellowstone',
+                          #  'S_Cascade',
+                           # 'Wa_Coast',
+                            #'Greater_Glacier',
+                           # 'Or_Coast'
+                           # ]
 
         # Original Region List needed to remove bad features
-        self.OG_Region_list = ['N_Sierras',
-                               'S_Sierras',
-                               'Greater_Yellowstone',
-                               'N_Co_Rockies',
-                               'SW_Mont',
-                               'SW_Co_Rockies',
-                               'GBasin',
-                               'N_Wasatch',
-                               'N_Cascade',
-                               'S_Wasatch',
-                               'SW_Mtns',
-                               'E_WA_N_Id_W_Mont',
-                               'S_Wyoming',
-                               'SE_Co_Rockies',
-                               'Sawtooth',
-                               'Ca_Coast',
-                               'E_Or',
-                               'N_Yellowstone',
-                               'S_Cascade',
-                               'Wa_Coast',
-                               'Greater_Glacier',
-                               'Or_Coast'
-                               ]
+        OG_Region_list = Regions.copy()
+
+        if 'S_Sierras_High' in OG_Region_list:
+            OG_Region_list.remove('S_Sierras_High')
+            OG_Region_list.append('S_Sierras')
+
+        if 'S_Sierras_Low' in OG_Region_list:
+            OG_Region_list.remove('S_Sierras_Low')
+            OG_Region_list.append('S_Sierras')
+
+
+        res = []
+        [res.append(x) for x in OG_Region_list if x not in res]
+
+        self.OG_Region_list = res
+                                      #,
+          #                  'Greater_Yellowstone',
+           #                 'N_Co_Rockies',
+            #                'SW_Mont',
+             #               'SW_Co_Rockies',
+              #              'GBasin',
+               #             'N_Wasatch',
+                #            'N_Cascade',
+                 #           'S_Wasatch',
+                  #          'SW_Mtns',
+                   #         'E_WA_N_Id_W_Mont',
+                    #        'S_Wyoming',
+                     #       'SE_Co_Rockies',
+                      #      'Sawtooth',
+                       #     'Ca_Coast',
+                        #    'E_Or',
+                         #   'N_Yellowstone',
+                          #  'S_Cascade',
+                           # 'Wa_Coast',
+                            #'Greater_Glacier',
+                           # 'Or_Coast'
+                           # ]
 
     # make Region identifier. The data already includes Region, but too many 'other' labels
 
@@ -359,16 +378,18 @@ class SWE_Prediction():
         return CDEC_SWE
 
     def Get_Monitoring_Data(self):
-        GM_template = pd.read_csv(self.cwd + '\\Data\\Pre_Processed_DA\\ground_measures_features_template.csv')
+        GM_template = pd.read_csv(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features_template.csv")
         GM_template = GM_template.rename(columns={'Unnamed: 0': 'station_id'})
         GM_template.index = GM_template['station_id']
         cols = ['Date']
         GM_template = GM_template[cols]
+        
 
         # Get all records, can filter later,
         self.CDECsites = list(GM_template.index)
         self.CDECsites = list(filter(lambda x: 'CDEC' in x, self.CDECsites))
         self.CDECsites = [x[-3:] for x in self.CDECsites]
+        #print(self.CDECsites)
 
         date = pd.to_datetime(self.date)
 
@@ -383,7 +404,7 @@ class SWE_Prediction():
 
         print('Getting California Data Exchange Center SWE data from sites: ')
         for site in self.CDECsites:
-            # print(site)
+            #print(site)
             CDEC = self.get_CDEC(site, sensor_id, resolution, start_date, date.strftime('%Y-%m-%d'))
             frames = [SWE_df, CDEC]
             SWE_df = pd.concat(frames)
@@ -396,7 +417,7 @@ class SWE_Prediction():
 
         print('Getting NRCS SNOTEL SWE data from sites: ')
         for site in self.Snotelsites:
-            # print(site)
+            #print(site)
             Snotel = self.get_SNOTEL(site, start_date, date)
             frames = [SWE_df, Snotel]
             SWE_df = pd.concat(frames)
@@ -419,7 +440,9 @@ class SWE_Prediction():
         # SWE_df = SWE_df.rename(columns = {'Unnamed: 0': 'station_id'})
         # SWE_df = SWE_df.set_index('station_id')
 
-        SWE_df.to_csv(self.cwd + '\\Data\\Pre_Processed_DA\\ground_measures_features_' + date + '.csv')
+        #SWE_df.to_csv(self.cwd + '\\Data\\Pre_Processed_DA\\ground_measures_features_' + date + '.csv')
+        self.SWE_df = SWE_df
+        self.SWE_df.to_hdf(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features.h5", key = date)
 
     def get_SNOTEL_Threaded(self, sitecode, start_date, end_date):
         # print(sitecode)
@@ -494,7 +517,7 @@ class SWE_Prediction():
         # return CDEC_SWE
 
     def Get_Monitoring_Data_Threaded(self):
-        GM_template = pd.read_csv(self.cwd + '\\Data\\Pre_Processed_DA\\ground_measures_features_template.csv')
+        GM_template = pd.read_csv(self.datapath + '\\data\\PreProcessed\\ground_measures_features_template.csv')
         GM_template = GM_template.rename(columns={'Unnamed: 0': 'station_id'})
         GM_template.index = GM_template['station_id']
         cols = ['Date']
@@ -579,24 +602,31 @@ class SWE_Prediction():
         self.SWE_df = self.SWE_df.rename(columns={'index': 'station_id'})
         self.SWE_df = self.SWE_df.set_index('station_id')
 
-        self.SWE_df.to_csv(self.cwd + '\\Data\\Pre_Processed_DA\\ground_measures_features_' + date + '.csv')
+        #self.SWE_df.to_csv(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features_{date}.csv")
+        self.SWE_df.to_hdf(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features.h5", key = date)
         # print("saved to:", self.cwd + '/Data/Pre_Processed_DA/ground_measures_features_' + date + '.csv')
 
     # Data Assimilation script, takes date and processes to run model.
     def Data_Processing(self):
 
         # load ground truth values (SNOTEL): Testing
-        obs_path = self.cwd + '\\Data\\Pre_Processed_DA\\ground_measures_features_' + self.date + '.csv'
-        self.GM_Test = pd.read_csv(obs_path)
-
+        #obs_path = self.datapath + '\\data\\PreProcessed\\ground_measures_features_' + self.date + '.csv'
+        obs_path = f"{self.datapath}\\data\\PreProcessed\\ground_measures_features.h5"
+        #self.GM_Test = pd.read_csv(obs_path)
+        self.GM_Test = pd.read_hdf(obs_path, key = self.date)
         # load ground truth values (SNOTEL): previous week, these have Na values filled by prev weeks obs +/- mean region Delta SWE
-        obs_path = self.cwd + '\\Data\\Processed\\DA_ground_measures_features_' + self.prevdate + '.csv'
-        self.GM_Prev = pd.read_csv(obs_path)
+        #obs_path = self.datapath + '\\data\\PreProcessed\\DA_ground_measures_features_' + self.prevdate + '.csv'
+        #self.GM_Prev = pd.read_csv(obs_path)
+        obs_path = f"{self.datapath}\\data\\PreProcessed\\DA_ground_measures_features.h5"
+        self.GM_Prev = pd.read_hdf(obs_path, key = self.prevdate)
+        
+        
         colrem = ['Region', 'Prev_SWE', 'Delta_SWE']
         self.GM_Prev = self.GM_Prev.drop(columns=colrem)
 
         # All coordinates of 1 km polygon used to develop ave elevation, ave slope, ave aspect
-        path = self.cwd + '\\Data\\Processed\\RegionVal.pkl'  # TODO change to RegionVals?
+        #path = self.datapath + '\\data\\PreProcessed\\RegionVal.pkl'  # TODO change to RegionVals?
+        path = self.datapath + '\\data\\PreProcessed\\RegionVal2.pkl'
         # load regionalized geospatial data
         self.RegionTest = open(path, "rb")
         self.RegionTest = pd.read_pickle(self.RegionTest)
@@ -604,15 +634,19 @@ class SWE_Prediction():
         ### Load H5 previous prediction files into dictionary
 
         self.prev_SWE = {}
-        for region in self.Region_list:
-            self.prev_SWE[region] = pd.read_hdf(self.cwd + '\\Predictions\\predictions' + self.prevdate + '.h5',
+        for region in self.Regions:
+            self.prev_SWE[region] = pd.read_hdf(self.cwd + '\\Predictions\\Hold_Out_Year\\Predictions\\predictions' + self.prevdate + '.h5',
                                                 region)  # this was
             self.prev_SWE[region] = pd.DataFrame(self.prev_SWE[region][self.prevdate])
             self.prev_SWE[region] = self.prev_SWE[region].rename(columns={self.prevdate: 'prev_SWE'})
 
         # change first column to station id
-        self.GM_Test = self.GM_Test.rename(columns={'Unnamed: 0': 'station_id'})
-        self.GM_Prev = self.GM_Prev.rename(columns={'Unnamed: 0': 'station_id'})
+        #self.GM_Test = self.GM_Test.rename(columns={'Unnamed: 0': 'station_id'})
+        #self.GM_Prev = self.GM_Prev.rename(columns={'Unnamed: 0': 'station_id'})
+        self.GM_Test.reset_index(inplace = True)
+        self.GM_Prev.reset_index(inplace = True)
+        self.GM_Prev.rename(columns = {'index':'station_id'}, inplace = True)
+        
 
         # Fill NA observations
         # self.GM_Test[self.date] = self.GM_Test[self.date].fillna(-9999)
@@ -624,7 +658,7 @@ class SWE_Prediction():
         self.GM_Test = self.GM_Test.rename(columns={'variable': 'Date', 'value': 'SWE'})
 
         # load ground truth meta
-        self.GM_Meta = pd.read_csv(self.cwd + '\\Data\\Pre_Processed\\ground_measures_metadata.csv')
+        self.GM_Meta = pd.read_csv(self.datapath + '\\data\\PreProcessed\\ground_measures_metadata.csv')
 
         # merge testing ground truth location metadata with snotel data
         self.GM_Test = self.GM_Meta.merge(self.GM_Test, how='inner', on='station_id')
@@ -653,7 +687,8 @@ class SWE_Prediction():
                                   self.prev_Snotel.Region.unique()}
 
         # add week number to observations
-        for i in self.RegionTest.keys():
+        #for i in self.RegionTest.keys():
+        for i in self.OG_Region_list:
             self.RegionTest[i] = self.RegionTest[i].reset_index(drop=True)
             self.RegionTest[i]['Date'] = pd.to_datetime(self.RegionSnotel[i]['Date'][0])
             self.week_num(i)
@@ -674,17 +709,17 @@ class SWE_Prediction():
             # self.Future_GM_Pred = self.Future_GM_Pred.append(self.RegionSnotel[region])
 
         # Need to save 'updated non-na' df's
-        GM_path = self.cwd + '\\Data\\Processed\\DA_ground_measures_features_' + self.date + '.csv'
-
-        self.Future_GM_Pred.to_csv(GM_path)
-
+        #GM_path = self.datapath + '\\data\\PreProcessed\\DA_ground_measures_features_' + self.date + '.csv'
+        GM_path = f"{self.datapath}\\data\\PreProcessed\\DA_ground_measures_features.h5"
+        #self.Future_GM_Pred.to_csv(GM_path)
+        self.Future_GM_Pred.to_hdf(GM_path, key = self.date)
         # This needs to be here to run in next codeblock
-        self.Regions = list(self.RegionTest.keys()).copy()
+        #self.Regions = list(self.RegionTest.keys()).copy()
 
         # Make dictionary in Regions dict for each region's dictionary of Snotel sites
         # Regions = list(RegionTrain.keys()).copy()
 
-        for i in tqdm(self.Regions):
+        for i in tqdm(self.OG_Region_list):
 
             snotel = i + '_Snotel'
             self.RegionTest[snotel] = {site: self.RegionSnotel[i].loc[site] for site in
@@ -709,7 +744,7 @@ class SWE_Prediction():
 
             # make a df for training each region,
 
-        for R in tqdm(self.Regions):
+        for R in tqdm(self.OG_Region_list):
             snotels = R + '_Snotel'
             # RegionTest[R] = RegionTest[R].reset_index()
             # print(R)
@@ -738,12 +773,16 @@ class SWE_Prediction():
 
         # Add previous Cell SWE
         for region in self.Region_list:
-            self.RegionTest[region] = pd.concat([self.RegionTest[region], self.prev_SWE[region]], axis=1, join='inner')
+             #drop any duplicates
+            self.RegionTest[region] = self.RegionTest[region].reset_index().drop_duplicates(subset='cell_id', keep='last').set_index('cell_id')
+            self.prev_SWE[region]= self.prev_SWE[region].reset_index().drop_duplicates(subset='cell_id', keep='last').set_index('cell_id')
+            #add previous SWE as obs
+            self.RegionTest[region] = pd.concat([self.RegionTest[region], self.prev_SWE[region]], axis=1)
 
             # save dictionaries as pkl
         # create a binary pickle file 
 
-        path = self.cwd + '\\Data\\Processed\\Prediction_DF_' + self.date + '.pkl'
+        path = self.cwd + '\\Predictions\\Hold_Out_year\\Predictions\\Prediction_DF_' + self.date + '.pkl'
 
         RVal = open(path, "wb")
 
@@ -863,9 +902,9 @@ class SWE_Prediction():
         self.Prev_df = self.Prev_df.loc[self.sub_index]
         self.subdf[self.date] = self.Prev_df[self.date].astype(float)
         # subdf.index.names = [' ']
-        self.subdf.to_csv(self.cwd + '\\Predictions\\submission_format_' + self.date + '.csv')
-
-        # set up model prediction function
+        #self.subdf.to_csv(self.cwd + '\\Predictions\\submission_format_' + self.date + '.csv')
+        self.subdf.to_csv(f"{self.cwd}\\Predictions\\submission_format_{self.date}.csv")
+     
 
     def Predict(self, Region):
 
@@ -884,8 +923,10 @@ class SWE_Prediction():
         # load and scale data
 
         # set up model checkpoint to be able to extract best models
-        checkpoint_filepath = self.cwd + '\\Model\\Prev_SWE_Models_Final\\' + Region + '\\'
-        model = checkpoint_filepath + Region + '_model.h5'
+        #checkpoint_filepath = self.cwd + '\\Model\\Prev_SWE_Models_Final\\' + Region + '\\'
+        #model = checkpoint_filepath + Region + '_model.h5'
+        checkpoint_filepath = self.cwd + '\\Model\\' + Region + '\\'
+        model = keras.models.load_model(f"{checkpoint_filepath}{Region}_model.keras")
         print(model)
         model = load_model(model)
 
@@ -904,32 +945,8 @@ class SWE_Prediction():
         y_forecast[y_forecast < 0] = 0
         y_forecast = (SWEmax * y_forecast)
         # remove forecasts less than 0.5 inches SWE
-        y_forecast[y_forecast < 0.5] = 0
+        y_forecast[y_forecast < 0.2] = 0
         self.Forecast[Region][self.date] = y_forecast
-
-        #        if self.plot == True:
-        #            #plot predictions
-        #            plt.scatter( self.Forecast[Region]['elevation_m'],self.Forecast[Region][self.date], s=5, color="blue", label="Predictions")
-        #            plt.xlabel('elevation m')
-        #            plt.ylabel('Predicted SWE')
-        #            plt.legend()
-
-        # plt.plot(x_ax, y_pred, lw=0.8, color="red", label="predicted")
-        #            plt.title(Region)
-        #            plt.show()
-
-        # plot geolocation information
-        #            _geom = [Point(xy) for xy in zip(self.Forecast[Region]['Long'], self.Forecast[Region]['Lat'])]
-        #            _geom_df = gpd.GeoDataFrame(self.Forecast[Region], crs="EPSG:4326", geometry=_geom)
-
-        #           dfmax = max(self.Forecast[Region][self.date])*1.05
-
-        # fig, ax = plt.subplots(figsize=(14,6))
-        #           ax = _geom_df.plot(self.date, cmap="cool", markersize=30,figsize=(25,25), legend=True, vmin=0, vmax=dfmax)#vmax=test_preds['delta'].max(), vmin=test_preds['delta'].min())
-        #           cx.add_basemap(ax, alpha = .7, crs=_geom_df.crs.to_string())
-
-        #
-        #           plt.show()
 
         return self.Forecast[Region]
 

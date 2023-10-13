@@ -111,7 +111,7 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
         model.fit(X_train, y_train, epochs=epochs, batch_size=100,
                             validation_data=(X_test,y_test),shuffle=True,callbacks=[callback], verbose=0)
 
-def Model_predict(cwd,  RegionTest, RegionObs_Test, RegionTest_notScaled):
+def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
     
     Predictions = {}
     
@@ -148,7 +148,11 @@ def Model_predict(cwd,  RegionTest, RegionObs_Test, RegionTest_notScaled):
         bestmodel.sort(key=natural_keys)
         bestmodel = checkpoint_filepath+bestmodel[0]
         model=load_model(bestmodel)
-        print(bestmodel)
+       # print(bestmodel)
+        #save this model
+        model.save(f"{checkpoint_filepath}{Region}_model.keras")
+        #make sure the model loads
+        model = keras.models.load_model(f"{checkpoint_filepath}{Region}_model.keras")
 
 
          #Load SWEmax

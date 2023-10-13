@@ -91,8 +91,8 @@ def DataProcess(test_year,datapath, cwd):
         # normalize features
         scaler = MinMaxScaler(feature_range=(0, 1))
         #save scaler data here too
-        dump(scaler, open(f"{cwd}/Model/{Region}/{Region}_scaler.pkl", 'wb'))
         scaled = scaler.fit_transform(df)
+        dump(scaler, open(f"{cwd}/Model/{Region}/{Region}_scaler.pkl", 'wb'))
         df = pd.DataFrame(scaled, columns = df.columns)
 
         #Add Viirs colums
