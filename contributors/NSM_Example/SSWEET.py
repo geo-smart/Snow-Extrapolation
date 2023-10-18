@@ -177,17 +177,25 @@ def Model_Vs(RegionTest,metric,model_output, datapath):
     #put y_pred, y_pred_fSCA, y_test, Region into one DF for parity plot
     Compare_DF = pd.DataFrame()
     cols = ['Region', 'y_test', 'y_pred', 'y_pred_fSCA', metric]
+    
+    RegionTrain_SCA_path = f"{datapath}/data/RegionTrain_SCA.pkl"   
+    # load regionalized forecast data
+    #current forecast
+    df_Region = open(RegionTrain_SCA_path, "rb")
+    df_Region = pickle.load(df_Region)
+    
+    
     for Region in Regions:
         #check if metric is included and add if not
         try:
             df = RegionTest[Region][cols]
         except:
-            df_Region =  pd.read_hdf(f"{datapath}/data/RegionTrain_SCA.h5", Region)
-            df_Region = pd.DataFrame(df_Region[metric])
-            df_Region.drop_duplicates(inplace = True)
-            df_Region.reset_index(inplace = True)
+            #df_Region =  pd.read_hdf(f"{datapath}/data/RegionTrain_SCA.h5", Region)
+            df_Region[Region] = pd.DataFrame(df_Region[Region][metric])
+            df_Region[Region].drop_duplicates(inplace = True)
+            df_Region[Region].reset_index(inplace = True)
             df.reset_index(inplace = True)
-            df = pd.merge(RegionTest[Region], df_Region,on = 'index', how = 'left')
+            df = pd.merge(RegionTest[Region], df_Region[Region],on = 'index', how = 'left')
             df.set_index('index', inplace = True, drop = True)
             df = df[cols]
 
