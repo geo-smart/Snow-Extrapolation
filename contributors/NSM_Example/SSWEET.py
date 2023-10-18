@@ -416,7 +416,7 @@ def Map_Plot_Eval(datapath, RegionTest, yaxis, error_metric):
         colormap.caption = 'Model Performance (KGE)'
         
     elif error_metric == 'cm':
-        colormap = cm.StepColormap(colors = ['g', 'orange', 'r', 'darkred'], vmin = 0, vmax = 20, index = [0,2,6,10,20])
+        colormap = cm.StepColormap(colors = ['g', 'orange', 'r', 'darkred'], vmin = 0, vmax = 20, index = [0,6,12,25,50])
         colormap.caption = 'Model Error (cm)'
         
     elif error_metric == '%':
@@ -471,13 +471,13 @@ def Map_Plot_Eval(datapath, RegionTest, yaxis, error_metric):
         #error in absolute value and inches       
         elif error_metric == 'cm':
             error = np.abs(np.mean(df[Obs_site] - df[Pred_site]))
-            if error < 2:
+            if error < 6:
                 color = 'green'
 
-            elif error < 6:
+            elif error < 12:
                 color = 'orange'
 
-            elif error <10:
+            elif error <25:
                 color = 'red'
 
             else:
