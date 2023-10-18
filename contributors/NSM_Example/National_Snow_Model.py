@@ -29,20 +29,20 @@ import rasterio
 import geopandas as gpd
 from shapely.geometry import Point
 import xarray as xr
-import netCDF4 as nc
+#import netCDF4 as nc
 # from mpl_toolkits.basemap import Basemap
 from matplotlib.colors import LinearSegmentedColormap
 import folium
 from folium import plugins
 import branca.colormap as cm
-import rioxarray as rxr
+#import rioxarray as rxr
 import earthpy as et
 import earthpy.spatial as es
 import datetime as dt
-from netCDF4 import date2num, num2date
-from osgeo import osr
+#from netCDF4 import date2num, num2date
+#from osgeo import osr
 # import warningspip
-from pyproj import CRS
+#from pyproj import CRS
 import requests
 import geojson
 import pandas as pd
@@ -57,7 +57,7 @@ import shapely.geometry
 import threading
 
 # import contextily as ctx
-import ulmo
+#import ulmo
 from datetime import timedelta
 
 warnings.filterwarnings("ignore")
@@ -377,72 +377,73 @@ class SWE_Prediction():
 
         return CDEC_SWE
 
-    def Get_Monitoring_Data(self):
-        GM_template = pd.read_csv(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features_template.csv")
-        GM_template = GM_template.rename(columns={'Unnamed: 0': 'station_id'})
-        GM_template.index = GM_template['station_id']
-        cols = ['Date']
-        GM_template = GM_template[cols]
-        
+    def Get_Monitoring_Data(self, getdata = False):
+        if getdata ==True:
+            GM_template = pd.read_csv(f"{self.datapath}/data/PreProcessed/ground_measures_features_template.csv")
+            GM_template = GM_template.rename(columns={'Unnamed: 0': 'station_id'})
+            GM_template.index = GM_template['station_id']
+            cols = ['Date']
+            GM_template = GM_template[cols]
 
-        # Get all records, can filter later,
-        self.CDECsites = list(GM_template.index)
-        self.CDECsites = list(filter(lambda x: 'CDEC' in x, self.CDECsites))
-        self.CDECsites = [x[-3:] for x in self.CDECsites]
-        #print(self.CDECsites)
 
-        date = pd.to_datetime(self.date)
+            # Get all records, can filter later,
+            self.CDECsites = list(GM_template.index)
+            self.CDECsites = list(filter(lambda x: 'CDEC' in x, self.CDECsites))
+            self.CDECsites = [x[-3:] for x in self.CDECsites]
+            #print(self.CDECsites)
 
-        start_date = date - timedelta(days=1)
-        start_date = start_date.strftime('%Y-%m-%d')
+            date = pd.to_datetime(self.date)
 
-        resolution = 'D'
-        sensor_id = '3'
+            start_date = date - timedelta(days=1)
+            start_date = start_date.strftime('%Y-%m-%d')
 
-        SWE_df = pd.DataFrame(columns=['station_id', date.strftime('%Y-%m-%d')], index=[1])
-        SWE_df = SWE_df.set_index('station_id')
+            resolution = 'D'
+            sensor_id = '3'
 
-        print('Getting California Data Exchange Center SWE data from sites: ')
-        for site in self.CDECsites:
-            #print(site)
-            CDEC = self.get_CDEC(site, sensor_id, resolution, start_date, date.strftime('%Y-%m-%d'))
-            frames = [SWE_df, CDEC]
-            SWE_df = pd.concat(frames)
+            SWE_df = pd.DataFrame(columns=['station_id', date.strftime('%Y-%m-%d')], index=[1])
+            SWE_df = SWE_df.set_index('station_id')
 
-        #    cols = [date]
-        #   SWE_df = SWE_df[cols]
+            print('Getting California Data Exchange Center SWE data from sites: ')
+            for site in self.CDECsites:
+                #print(site)
+                CDEC = self.get_CDEC(site, sensor_id, resolution, start_date, date.strftime('%Y-%m-%d'))
+                frames = [SWE_df, CDEC]
+                SWE_df = pd.concat(frames)
 
-        self.Snotelsites = list(GM_template.index)
-        self.Snotelsites = list(filter(lambda x: 'SNOTEL' in x, self.Snotelsites))
+            #    cols = [date]
+            #   SWE_df = SWE_df[cols]
 
-        print('Getting NRCS SNOTEL SWE data from sites: ')
-        for site in self.Snotelsites:
-            #print(site)
-            Snotel = self.get_SNOTEL(site, start_date, date)
-            frames = [SWE_df, Snotel]
-            SWE_df = pd.concat(frames)
+            self.Snotelsites = list(GM_template.index)
+            self.Snotelsites = list(filter(lambda x: 'SNOTEL' in x, self.Snotelsites))
 
-        # SWE_df = SWE_df[cols]
-        SWE_df = SWE_df.iloc[1:]
-        date = date.strftime('%Y-%m-%d')
+            print('Getting NRCS SNOTEL SWE data from sites: ')
+            for site in self.Snotelsites:
+                #print(site)
+                Snotel = self.get_SNOTEL(site, start_date, date)
+                frames = [SWE_df, Snotel]
+                SWE_df = pd.concat(frames)
 
-        # SWE_df= SWE_df[~SWE_df.index.duplicated(keep = 'first')]
+            # SWE_df = SWE_df[cols]
+            SWE_df = SWE_df.iloc[1:]
+            date = date.strftime('%Y-%m-%d')
 
-        SWE_df[date] = SWE_df[date].replace(['--'], -9999)
+            # SWE_df= SWE_df[~SWE_df.index.duplicated(keep = 'first')]
 
-        SWE_df[date] = SWE_df[date].astype(float)
+            SWE_df[date] = SWE_df[date].replace(['--'], -9999)
 
-        NegSWE = SWE_df[SWE_df[date].between(-10, -.1)].copy()
-        NegSWE[date] = 0
+            SWE_df[date] = SWE_df[date].astype(float)
 
-        SWE_df.update(NegSWE)
+            NegSWE = SWE_df[SWE_df[date].between(-10, -.1)].copy()
+            NegSWE[date] = 0
 
-        # SWE_df = SWE_df.rename(columns = {'Unnamed: 0': 'station_id'})
-        # SWE_df = SWE_df.set_index('station_id')
+            SWE_df.update(NegSWE)
 
-        #SWE_df.to_csv(self.cwd + '\\Data\\Pre_Processed_DA\\ground_measures_features_' + date + '.csv')
-        self.SWE_df = SWE_df
-        self.SWE_df.to_hdf(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features.h5", key = date)
+            # SWE_df = SWE_df.rename(columns = {'Unnamed: 0': 'station_id'})
+            # SWE_df = SWE_df.set_index('station_id')
+
+            #SWE_df.to_csv(self.cwd + '/Data/Pre_Processed_DA/ground_measures_features_' + date + '.csv')
+            self.SWE_df = SWE_df
+            self.SWE_df.to_hdf(f"{self.datapath}/data/PreProcessed/ground_measures_features.h5", key = date)
 
     def get_SNOTEL_Threaded(self, sitecode, start_date, end_date):
         # print(sitecode)
@@ -516,108 +517,112 @@ class SWE_Prediction():
         # self.SWE_df = pd.concat(frames)
         # return CDEC_SWE
 
-    def Get_Monitoring_Data_Threaded(self):
-        GM_template = pd.read_csv(self.datapath + '\\data\\PreProcessed\\ground_measures_features_template.csv')
-        GM_template = GM_template.rename(columns={'Unnamed: 0': 'station_id'})
-        GM_template.index = GM_template['station_id']
-        cols = ['Date']
-        GM_template = GM_template[cols]
+    def Get_Monitoring_Data_Threaded(self, getdata = False):
+        if getdata == False:
+            print('Monitoring station observations set to preloaded data')
+        
+        if getdata ==True:
+            GM_template = pd.read_csv(self.datapath + '/data/PreProcessed/ground_measures_features_template.csv')
+            GM_template = GM_template.rename(columns={'Unnamed: 0': 'station_id'})
+            GM_template.index = GM_template['station_id']
+            cols = ['Date']
+            GM_template = GM_template[cols]
 
-        # Get all records, can filter later,
-        self.CDECsites = list(GM_template.index)
-        self.CDECsites = list(filter(lambda x: 'CDEC' in x, self.CDECsites))
-        self.CDECsites_complete = self.CDECsites.copy()
-        self.CDECsites = [x[-3:] for x in self.CDECsites]
+            # Get all records, can filter later,
+            self.CDECsites = list(GM_template.index)
+            self.CDECsites = list(filter(lambda x: 'CDEC' in x, self.CDECsites))
+            self.CDECsites_complete = self.CDECsites.copy()
+            self.CDECsites = [x[-3:] for x in self.CDECsites]
 
-        self.Snotelsites = list(GM_template.index)
-        self.Snotelsites = list(filter(lambda x: 'SNOTEL' in x, self.Snotelsites))
+            self.Snotelsites = list(GM_template.index)
+            self.Snotelsites = list(filter(lambda x: 'SNOTEL' in x, self.Snotelsites))
 
-        date = pd.to_datetime(self.date)
+            date = pd.to_datetime(self.date)
 
-        start_date = date - timedelta(days=1)
-        start_date = start_date.strftime('%Y-%m-%d')
+            start_date = date - timedelta(days=1)
+            start_date = start_date.strftime('%Y-%m-%d')
 
-        resolution = 'D'
-        sensor_id = '3'
+            resolution = 'D'
+            sensor_id = '3'
 
-        # Make SWE observation dataframe
-        self.station_ids = self.CDECsites_complete + self.Snotelsites
-        self.SWE_NA_fill = [-9999] * len(self.station_ids)
-        self.SWE_df = pd.DataFrame(list(zip(self.station_ids, self.SWE_NA_fill)),
-                                   columns=['station_id', date.strftime('%Y-%m-%d')])
-        self.SWE_df = self.SWE_df.set_index('station_id')
+            # Make SWE observation dataframe
+            self.station_ids = self.CDECsites_complete + self.Snotelsites
+            self.SWE_NA_fill = [-9999] * len(self.station_ids)
+            self.SWE_df = pd.DataFrame(list(zip(self.station_ids, self.SWE_NA_fill)),
+                                       columns=['station_id', date.strftime('%Y-%m-%d')])
+            self.SWE_df = self.SWE_df.set_index('station_id')
 
-        print('Getting California Data Exchange Center SWE data from sites: ')
-        threads = []  # create list to store thread references
+            print('Getting California Data Exchange Center SWE data from sites: ')
+            threads = []  # create list to store thread references
 
-        # create new threads and append them to the list of threads
-        for site in self.CDECsites:
-            # print(site)
-            # functions with arguments must have an 'empty' arg at the end of the passed 'args' tuple
-            t = threading.Thread(target=self.get_CDEC_Threaded,
-                                 args=(site, sensor_id, resolution, start_date, date.strftime('%Y-%m-%d')))
-            threads.append(t)
+            # create new threads and append them to the list of threads
+            for site in self.CDECsites:
+                # print(site)
+                # functions with arguments must have an 'empty' arg at the end of the passed 'args' tuple
+                t = threading.Thread(target=self.get_CDEC_Threaded,
+                                     args=(site, sensor_id, resolution, start_date, date.strftime('%Y-%m-%d')))
+                threads.append(t)
 
-        # start all threads
-        for t in threads:
-            t.start()
-        # !!!!! IMPORTANT !!!!!
-        # join all threads to queue so the system will wait until every thread has completed
-        for t in threads:
-            t.join()
+            # start all threads
+            for t in threads:
+                t.start()
+            # !!!!! IMPORTANT !!!!!
+            # join all threads to queue so the system will wait until every thread has completed
+            for t in threads:
+                t.join()
 
-        print('Getting NRCS SNOTEL SWE data from sites: ')
-        threads = []  # create list to store thread references
+            print('Getting NRCS SNOTEL SWE data from sites: ')
+            threads = []  # create list to store thread references
 
-        # create new threads and append them to the list of threads
-        for site in self.Snotelsites:
-            # print(site)
-            # functions with arguments must have an 'empty' arg at the end of the passed 'args' tuple
-            t = threading.Thread(target=self.get_SNOTEL_Threaded, args=(site, start_date, date))
-            threads.append(t)
+            # create new threads and append them to the list of threads
+            for site in self.Snotelsites:
+                # print(site)
+                # functions with arguments must have an 'empty' arg at the end of the passed 'args' tuple
+                t = threading.Thread(target=self.get_SNOTEL_Threaded, args=(site, start_date, date))
+                threads.append(t)
 
-        # start all threads
-        for t in threads:
-            t.start()
-        # !!!!! IMPORTANT !!!!!
-        # join all threads to queue so the system will wait until every thread has completed
-        for t in threads:
-            t.join()
+            # start all threads
+            for t in threads:
+                t.start()
+            # !!!!! IMPORTANT !!!!!
+            # join all threads to queue so the system will wait until every thread has completed
+            for t in threads:
+                t.join()
 
-        date = date.strftime('%Y-%m-%d')
+            date = date.strftime('%Y-%m-%d')
 
-        self.SWE_df = self.SWE_df[~self.SWE_df.index.duplicated(keep='first')]
+            self.SWE_df = self.SWE_df[~self.SWE_df.index.duplicated(keep='first')]
 
-        # remove -- from CDEC predictions and make df a float
-        self.SWE_df[date] = self.SWE_df[date].astype(str)
-        self.SWE_df[date] = self.SWE_df[date].replace(['--'], -9999)
-        self.SWE_df[date] = pd.to_numeric(self.SWE_df[date], errors='coerce')
-        self.SWE_df[date] = self.SWE_df[date].fillna(-9999)
+            # remove -- from CDEC predictions and make df a float
+            self.SWE_df[date] = self.SWE_df[date].astype(str)
+            self.SWE_df[date] = self.SWE_df[date].replace(['--'], -9999)
+            self.SWE_df[date] = pd.to_numeric(self.SWE_df[date], errors='coerce')
+            self.SWE_df[date] = self.SWE_df[date].fillna(-9999)
 
-        NegSWE = self.SWE_df[self.SWE_df[date].between(-10, -.1)].copy()
-        NegSWE[date] = 0
+            NegSWE = self.SWE_df[self.SWE_df[date].between(-10, -.1)].copy()
+            NegSWE[date] = 0
 
-        self.SWE_df.update(NegSWE)
-        self.SWE_df.reset_index(inplace=True)
-        self.SWE_df = self.SWE_df.rename(columns={'index': 'station_id'})
-        self.SWE_df = self.SWE_df.set_index('station_id')
+            self.SWE_df.update(NegSWE)
+            self.SWE_df.reset_index(inplace=True)
+            self.SWE_df = self.SWE_df.rename(columns={'index': 'station_id'})
+            self.SWE_df = self.SWE_df.set_index('station_id')
 
-        #self.SWE_df.to_csv(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features_{date}.csv")
-        self.SWE_df.to_hdf(f"{self.datapath}\\data\\PreProcessed\\ground_measures_features.h5", key = date)
-        # print("saved to:", self.cwd + '/Data/Pre_Processed_DA/ground_measures_features_' + date + '.csv')
+            #self.SWE_df.to_csv(f"{self.datapath}/data/PreProcessed/ground_measures_features_{date}.csv")
+            self.SWE_df.to_hdf(f"{self.datapath}/data/PreProcessed/ground_measures_features.h5", key = date)
+            # print("saved to:", self.cwd + '/Data/Pre_Processed_DA/ground_measures_features_' + date + '.csv')
 
     # Data Assimilation script, takes date and processes to run model.
     def Data_Processing(self):
 
         # load ground truth values (SNOTEL): Testing
-        #obs_path = self.datapath + '\\data\\PreProcessed\\ground_measures_features_' + self.date + '.csv'
-        obs_path = f"{self.datapath}\\data\\PreProcessed\\ground_measures_features.h5"
+        #obs_path = self.datapath + '/data/PreProcessed/ground_measures_features_' + self.date + '.csv'
+        obs_path = f"{self.datapath}/data/PreProcessed/ground_measures_features.h5"
         #self.GM_Test = pd.read_csv(obs_path)
         self.GM_Test = pd.read_hdf(obs_path, key = self.date)
         # load ground truth values (SNOTEL): previous week, these have Na values filled by prev weeks obs +/- mean region Delta SWE
-        #obs_path = self.datapath + '\\data\\PreProcessed\\DA_ground_measures_features_' + self.prevdate + '.csv'
+        #obs_path = self.datapath + '/data/PreProcessed/DA_ground_measures_features_' + self.prevdate + '.csv'
         #self.GM_Prev = pd.read_csv(obs_path)
-        obs_path = f"{self.datapath}\\data\\PreProcessed\\DA_ground_measures_features.h5"
+        obs_path = f"{self.datapath}/data/PreProcessed/DA_ground_measures_features.h5"
         self.GM_Prev = pd.read_hdf(obs_path, key = self.prevdate)
         
         
@@ -625,8 +630,8 @@ class SWE_Prediction():
         self.GM_Prev = self.GM_Prev.drop(columns=colrem)
 
         # All coordinates of 1 km polygon used to develop ave elevation, ave slope, ave aspect
-        #path = self.datapath + '\\data\\PreProcessed\\RegionVal.pkl'  # TODO change to RegionVals?
-        path = self.datapath + '\\data\\PreProcessed\\RegionVal2.pkl'
+        #path = self.datapath + '/data/PreProcessed/RegionVal.pkl'  # TODO change to RegionVals?
+        path = self.datapath + '/data/PreProcessed/RegionVal2.pkl'
         # load regionalized geospatial data
         self.RegionTest = open(path, "rb")
         self.RegionTest = pd.read_pickle(self.RegionTest)
@@ -635,7 +640,7 @@ class SWE_Prediction():
 
         self.prev_SWE = {}
         for region in self.Regions:
-            self.prev_SWE[region] = pd.read_hdf(self.cwd + '\\Predictions\\Hold_Out_Year\\Predictions\\predictions' + self.prevdate + '.h5',
+            self.prev_SWE[region] = pd.read_hdf(self.cwd + '/Predictions/Hold_Out_Year/Predictions/predictions' + self.prevdate + '.h5',
                                                 region)  # this was
             self.prev_SWE[region] = pd.DataFrame(self.prev_SWE[region][self.prevdate])
             self.prev_SWE[region] = self.prev_SWE[region].rename(columns={self.prevdate: 'prev_SWE'})
@@ -658,7 +663,7 @@ class SWE_Prediction():
         self.GM_Test = self.GM_Test.rename(columns={'variable': 'Date', 'value': 'SWE'})
 
         # load ground truth meta
-        self.GM_Meta = pd.read_csv(self.datapath + '\\data\\PreProcessed\\ground_measures_metadata.csv')
+        self.GM_Meta = pd.read_csv(self.datapath + '/data/PreProcessed/ground_measures_metadata.csv')
 
         # merge testing ground truth location metadata with snotel data
         self.GM_Test = self.GM_Meta.merge(self.GM_Test, how='inner', on='station_id')
@@ -709,8 +714,8 @@ class SWE_Prediction():
             # self.Future_GM_Pred = self.Future_GM_Pred.append(self.RegionSnotel[region])
 
         # Need to save 'updated non-na' df's
-        #GM_path = self.datapath + '\\data\\PreProcessed\\DA_ground_measures_features_' + self.date + '.csv'
-        GM_path = f"{self.datapath}\\data\\PreProcessed\\DA_ground_measures_features.h5"
+        #GM_path = self.datapath + '/data/PreProcessed/DA_ground_measures_features_' + self.date + '.csv'
+        GM_path = f"{self.datapath}/data/PreProcessed/DA_ground_measures_features.h5"
         #self.Future_GM_Pred.to_csv(GM_path)
         self.Future_GM_Pred.to_hdf(GM_path, key = self.date)
         # This needs to be here to run in next codeblock
@@ -782,15 +787,15 @@ class SWE_Prediction():
             # save dictionaries as pkl
         # create a binary pickle file 
 
-        path = self.cwd + '\\Predictions\\Hold_Out_year\\Predictions\\Prediction_DF_' + self.date + '.pkl'
+        #path = self.cwd + '/Predictions/Hold_Out_Year/Predictions/Prediction_DF_' + self.date + '.pkl'
 
-        RVal = open(path, "wb")
+        #RVal = open(path, "wb")
 
         # write the python object (dict) to pickle file
-        pickle.dump(self.RegionTest, RVal)
+        #pickle.dump(self.RegionTest, RVal)
 
         # close file
-        RVal.close()
+        #RVal.close()
 
     # Get the week number of the observations, from beginning of water year
     def week_num(self, region):
@@ -860,7 +865,7 @@ class SWE_Prediction():
         # self.plot = plot
         # load first SWE observation forecasting dataset with prev and delta swe for observations.
 
-        path = self.cwd + '\\Data\\Processed\\Prediction_DF_' + self.date + '.pkl'
+        #path = self.cwd + '/Data/Processed/Prediction_DF_' + self.date + '.pkl'
 
         # load regionalized forecast data
         self.Forecast = open(path, "rb")
@@ -869,7 +874,7 @@ class SWE_Prediction():
 
         # load RFE optimized features
         self.Region_optfeatures = pickle.load(
-            open(self.cwd + "\\Model\\Prev_SWE_Models_Final\\opt_features_prevSWE.pkl", "rb"))
+            open(self.cwd + "/Model/Prev_SWE_Models_Final/opt_features_prevSWE.pkl", "rb"))
 
         # Reorder regions
         self.Forecast = {k: self.Forecast[k] for k in self.Region_list}
@@ -890,10 +895,10 @@ class SWE_Prediction():
             # self.Prev_df = self.Prev_df.append(pd.DataFrame(self.predictions[Region][self.date]))
             self.Prev_df = pd.DataFrame(self.Prev_df)
 
-            self.predictions[Region].to_hdf(self.cwd + '\\Predictions\\predictions' + self.date + '.h5', key=Region)
+            self.predictions[Region].to_hdf(self.cwd + '/Predictions/predictions' + self.date + '.h5', key=Region)
 
         # load submission DF and add predictions, if locations are removed or added, this needs to be modified
-        self.subdf = pd.read_csv(self.cwd + '\\Predictions\\submission_format_' + self.prevdate + '.csv')
+        self.subdf = pd.read_csv(self.cwd + '/Predictions/submission_format_' + self.prevdate + '.csv')
         self.subdf.index = list(self.subdf.iloc[:, 0].values)
         self.subdf = self.subdf.iloc[:, 1:]  # TODO replace with drop("cell_id")
 
@@ -902,8 +907,8 @@ class SWE_Prediction():
         self.Prev_df = self.Prev_df.loc[self.sub_index]
         self.subdf[self.date] = self.Prev_df[self.date].astype(float)
         # subdf.index.names = [' ']
-        #self.subdf.to_csv(self.cwd + '\\Predictions\\submission_format_' + self.date + '.csv')
-        self.subdf.to_csv(f"{self.cwd}\\Predictions\\submission_format_{self.date}.csv")
+        #self.subdf.to_csv(self.cwd + '/Predictions/submission_format_' + self.date + '.csv')
+        self.subdf.to_csv(f"{self.cwd}/Predictions/submission_format_{self.date}.csv")
      
 
     def Predict(self, Region):
@@ -923,9 +928,9 @@ class SWE_Prediction():
         # load and scale data
 
         # set up model checkpoint to be able to extract best models
-        #checkpoint_filepath = self.cwd + '\\Model\\Prev_SWE_Models_Final\\' + Region + '\\'
+        #checkpoint_filepath = self.cwd + '/Model/Prev_SWE_Models_Final/' + Region + '/'
         #model = checkpoint_filepath + Region + '_model.h5'
-        checkpoint_filepath = self.cwd + '\\Model\\' + Region + '\\'
+        checkpoint_filepath = self.cwd + '/Model/' + Region + '/'
         model = keras.models.load_model(f"{checkpoint_filepath}{Region}_model.keras")
         print(model)
         model = load_model(model)
@@ -1010,7 +1015,7 @@ class SWE_Prediction():
         target_variable_xr = target_variable_xr.rename("SWE")
 
         # save as netCDF
-        target_variable_xr.to_netcdf(self.cwd + '\\Data\\NetCDF\\SWE_MAP_1km_' + self.date + '.nc')
+        target_variable_xr.to_netcdf(self.cwd + '/Data/NetCDF/SWE_MAP_1km_' + self.date + '.nc')
 
         # show plot
         print('File conversion to netcdf complete')
@@ -1061,7 +1066,7 @@ class SWE_Prediction():
         self.SWE_array = self.DFG['SWE'].values.reshape(1, len(self.latrange), len(self.lonrange))
 
         # create nc filepath
-        fn = self.cwd + '\\Data\\NetCDF\\SWE_MAP_1km_' + self.date + '.nc'
+        fn = self.cwd + '/Data/NetCDF/SWE_MAP_1km_' + self.date + '.nc'
 
         # make nc file, set lat/long, time
         ds = nc.Dataset(fn, 'w', format='NETCDF4')
@@ -1160,7 +1165,7 @@ class SWE_Prediction():
         self.SWE_array = self.DFG['SWE'].values.reshape(1, len(self.latrange), len(self.lonrange))
 
         # create nc filepath
-        fn = self.cwd + '\\Data\\NetCDF\\SWE_MAP_1km_' + self.date + '_CONUS.nc'
+        fn = self.cwd + '/Data/NetCDF/SWE_MAP_1km_' + self.date + '_CONUS.nc'
 
         # make nc file, set lat/long, time
         ds = nc.Dataset(fn, 'w', format='NETCDF4')
@@ -1261,7 +1266,7 @@ class SWE_Prediction():
         self.SWE_array = self.DFG['SWE'].values.reshape(1, len(self.latrange), len(self.lonrange))
 
         # create nc filepath
-        fn = self.cwd + '\\Data\\NetCDF\\SWE_' + self.date + '_compressed.nc'
+        fn = self.cwd + '/Data/NetCDF/SWE_' + self.date + '_compressed.nc'
 
         # make nc file, set lat/long, time
         ncfile = nc.Dataset(fn, 'w', format='NETCDF4')
@@ -1346,7 +1351,7 @@ class SWE_Prediction():
         plt.register_cmap(cmap=map_object)
 
         # load file
-        fn = self.cwd + '\\Data\\NetCDF\\SWE_MAP_1km_' + self.date + '.nc'
+        fn = self.cwd + '/Data/NetCDF/SWE_MAP_1km_' + self.date + '.nc'
         SWE = nc.Dataset(fn)
 
         # Get area of interest
@@ -1388,7 +1393,7 @@ class SWE_Prediction():
         plt.register_cmap(cmap=map_object)
 
         # load file
-        fn = self.cwd + '\\Data\\NetCDF\\SWE_' + self.date + '_compressed.nc'
+        fn = self.cwd + '/Data/NetCDF/SWE_' + self.date + '_compressed.nc'
 
         # open netcdf file with rioxarray
         xr = rxr.open_rasterio(fn)
@@ -1440,7 +1445,7 @@ class SWE_Prediction():
 
         # code for webbrowser app
         if web == True:
-            output_file = self.cwd + '\\Data\\NetCDF\\SWE_' + self.date + '.html'
+            output_file = self.cwd + '/Data/NetCDF/SWE_' + self.date + '.html'
             m.save(output_file)
             webbrowser.open(output_file, new=2)
 
@@ -1452,7 +1457,7 @@ class SWE_Prediction():
     # produce an interactive plot using Folium
     def plot_interactive_SWE(self, pinlat, pinlong, web):
         print('loading file')
-        fnConus = self.cwd + '\\Data\\NetCDF\\SWE_' + self.date + '_compressed.nc'
+        fnConus = self.cwd + '/Data/NetCDF/SWE_' + self.date + '_compressed.nc'
 
         # xr = rxr.open_rasterio(fn)
         xrConus = rxr.open_rasterio(fnConus)
@@ -1517,7 +1522,7 @@ class SWE_Prediction():
 
         # code for webbrowser app
         if web == True:
-            output_file = self.cwd + '\\Data\\NetCDF\\SWE_' + self.date + '_Interactive.html'
+            output_file = self.cwd + '/Data/NetCDF/SWE_' + self.date + '_Interactive.html'
             m.save(output_file)
             webbrowser.open(output_file, new=2)
 
@@ -1528,7 +1533,7 @@ class SWE_Prediction():
 
     def Geo_df(self):
         print('loading file')
-        fnConus = self.cwd + '\\Data\\NetCDF\\SWE_' + self.date + '_compressed.nc'
+        fnConus = self.cwd + '/Data/NetCDF/SWE_' + self.date + '_compressed.nc'
 
         # requires the netCDF4 package rather than rioxarray
         xrConus = nc.Dataset(fnConus)
@@ -1602,7 +1607,7 @@ class SWE_Prediction():
             # code for webbrowser app
 
             if web == True:
-                output_file = self.cwd + '\\Data\\NetCDF\\SWE_' + self.date + '_Interactive.html'
+                output_file = self.cwd + '/Data/NetCDF/SWE_' + self.date + '_Interactive.html'
                 m.save(output_file)
                 webbrowser.open(output_file, new=2)
 
@@ -1649,7 +1654,7 @@ class SWE_Prediction():
 
             HUCunit2 = 'huc' + str(HUC_len)
 
-            gdb_file = self.cwd + '\\Data\\WBD\\WBD_' + HU + '_HU2_GDB\\WBD_' + HU + '_HU2_GDB.gdb'
+            gdb_file = self.cwd + '/Data/WBD/WBD_' + HU + '_HU2_GDB/WBD_' + HU + '_HU2_GDB.gdb'
 
             # Get HUC unit from the .gdb file 
 
@@ -1664,7 +1669,7 @@ class SWE_Prediction():
 
     # These HUCS contain SWE
     def HUC_SWE_read(self, HU, HUC):
-        H = h5py.File(self.cwd + '\\Data\\WBD\\WBD_HUC_SWE.h5', 'r')
+        H = h5py.File(self.cwd + '/Data/WBD/WBD_HUC_SWE.h5', 'r')
         H_SWE = H[HU]['HUC8'][:].tolist()
         H_SWE = [str(i) for i in H_SWE]
         H.close()
@@ -1675,7 +1680,7 @@ class SWE_Prediction():
         print('Saving Key HUCs containing SWE to speed up spatial aggregation of geodataframes')
         HU_wSWE = list(df['geoid'])
         HU_wSWE = [int(i) for i in HU_wSWE]
-        f = h5py.File(cwd + '\\Data\\WBD\\WBD_HUC_SWE.h5', 'a')
+        f = h5py.File(cwd + '/Data/WBD/WBD_HUC_SWE.h5', 'a')
         HU10 = f.create_group(HU)
         HUC8 = HU10.create_dataset(HUC, data=HU_wSWE)
         f.close()

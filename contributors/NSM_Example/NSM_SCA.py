@@ -31,7 +31,7 @@ from tensorflow.keras.layers import Dense, Activation, Dropout
 
 # General Packages
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import glob
 from pprint import pprint
 from typing import Union
@@ -80,14 +80,14 @@ class NSM_SCA(SWE_Prediction):
         else:
             self.folder = f"{str(int(self.date[:4])-1)}-{str(int(self.date[:4]))}NASA"
 
-        self.SCA_folder = f"{self.datapath}\\data\\VIIRS_SCA\\{self.folder}"
+        self.SCA_folder = f"{self.datapath}/data/VIIRS_SCA/{self.folder}"
         self.threshold = threshold * 100  # Convert percentage to values used in VIIRS NDSI
 
-        self.auth = ea.login(strategy="netrc")
-        if self.auth is None:
-            print("Error logging into Earth Data account. Things will probably break")
+        #self.auth = ea.login(strategy="netrc")
+        #if self.auth is None:
+         #   print("Error logging into Earth Data account. Things will probably break")
 
-    def initializeGranules(self):
+    def initializeGranules(self, getdata = False):
         """
             Initalizes SCA information by fetching granules and merging them.
 
@@ -98,28 +98,34 @@ class NSM_SCA(SWE_Prediction):
             Returns:
                 None - Initializes the following class variables: extentDF, granules, raster
         """
-        #Get the prediction extent
-        bbox = self.getPredictionExtent()
-        dataFolder = self.SCA_folder
+        if getdata ==False:
+            print('VIIRS fSCA observations set to use data within precalculated dataframe.')
+            
+        else:
+            print('Getting VIIRS fSCA data and calculating the spatial average NSDI')
         
-        
-        #putting in try except to speed up predictions if files are already downloaded
-        try:
-            DOY = str(date(int(self.date[:4]), int(self.date[5:7]), int(self.date[8:])).timetuple().tm_yday)
-            self.DOYkey = self.date[:4]+DOY
-            self.granules = gpd.read_parquet(f"{self.SCA_folder}/Granules.parquet") 
-            self.granules.sort_values('h', inplace = True)
-            files = [v for v in os.listdir(self.SCA_folder) if self.DOYkey in v]
-            files = [x for x in files if x.endswith('tif')]
-            files = [self.SCA_folder+'/'+s for s in files]
-            self.granules['filepath'] = files
-            print('VIIRS fSCA files found locally')
-        except:
-            print('VIIRS fSCA granules need to be loaded from NSIDC, fetching...')
-            self.extentDF = self.calculateGranuleExtent(bbox, self.delayedDate)  # Get granule extent
-            self.granules = fetchGranules(bbox, dataFolder, self.delayedDate, self.extentDF)  # Fetch granules
-        
-        self.raster = createMergedRxr(self.granules["filepath"])  # Merge granules
+            #Get the prediction extent
+            bbox = self.getPredictionExtent()
+            dataFolder = self.SCA_folder
+
+
+            #putting in try except to speed up predictions if files are already downloaded
+            try:
+                DOY = str(date(int(self.date[:4]), int(self.date[5:7]), int(self.date[8:])).timetuple().tm_yday)
+                self.DOYkey = self.date[:4]+DOY
+                self.granules = gpd.read_parquet(f"{self.SCA_folder}/Granules.parquet") 
+                self.granules.sort_values('h', inplace = True)
+                files = [v for v in os.listdir(self.SCA_folder) if self.DOYkey in v]
+                files = [x for x in files if x.endswith('tif')]
+                files = [self.SCA_folder+'/'+s for s in files]
+                self.granules['filepath'] = files
+                print('VIIRS fSCA files found locally')
+            except:
+                print('VIIRS fSCA granules need to be loaded from NSIDC, fetching...')
+                self.extentDF = self.calculateGranuleExtent(bbox, self.delayedDate)  # Get granule extent
+                self.granules = fetchGranules(bbox, dataFolder, self.delayedDate, self.extentDF)  # Fetch granules
+
+            self.raster = createMergedRxr(self.granules["filepath"])  # Merge granules
 
     #Get the prediction extent
     def getPredictionExtent(self):
@@ -129,8 +135,12 @@ class NSM_SCA(SWE_Prediction):
             Returns:
                 extent (list[float, float, float, float]): The extent of the prediction dataframe.
         """
-        #regions = pd.read_pickle(f"{self.datapath}\\data\\PreProcessed\\RegionVal.pkl")
-        regions = pd.read_pickle(f"{self.datapath}\\data\\PreProcessed\\RegionVal2.pkl")
+        #regions = pd.read_pickle(f"{self.datapath}/data/PreProcessed/RegionVal.pkl")
+        regions = pd.read_pickle(f"{self.datapath}/data/PreProcessed/RegionVal2.pkl")
+    #pkl file workaround, 2i2c is not playing nice with pkl files, changed to h5
+        #regions = {}
+        #for Region in self.Regions:
+         #   regions[Region] = pd.read_hdf(f"{self.datapath}/data/PreProcessed/RegionVal2.h5", key = Region)
 
         self.superset = []
 
@@ -157,7 +167,7 @@ class NSM_SCA(SWE_Prediction):
         try:
             self.Forecast  # Check if forecast dataframe has been initialized
         except AttributeError:
-            path = f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\Prediction_DF_{self.date}.pkl" #This may need to be the region
+            path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl" #This may need to be the region
             self.Forecast = pd.read_pickle(path)
 
         region_df = self.Forecast[region]
@@ -183,14 +193,14 @@ class NSM_SCA(SWE_Prediction):
             Augments the forecast dataframes with SCA data.
         """
         print("Calculating mean SCA for each geometry in each region...")
-        self.Forecast = pd.read_pickle(f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\Prediction_DF_{self.date}.pkl")
+        self.Forecast = pd.read_pickle(f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl")
 
         # Augment each Forecast dataframes
         for region in tqdm(self.Region_list):
             self.Forecast[region] = self.augment_SCA(region).drop(columns=["geometry"])
 
         # Save augmented forecast dataframes
-        path = f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\Prediction_DF_SCA_{self.date}.pkl"
+        path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
         file = open(path, "wb")
 
         # write the python object (dict) to pickle file
@@ -203,18 +213,34 @@ class NSM_SCA(SWE_Prediction):
         # load first SWE observation forecasting dataset with prev and delta swe for observations.
 
         if SCA:
-            path = f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\Prediction_DF_SCA_{self.date}.pkl"
+            path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
         else:
-            path = f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\Prediction_DF_{self.date}.pkl"
+            path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl"
+         
+        #set up predictions for next timestep
+        fdate = pd.to_datetime(self.date)+timedelta(7)
+        fdate = fdate.strftime("%Y-%m-%d")
 
-        # load regionalized forecast data
-        self.Forecast = open(path, "rb")
-
-        self.Forecast = pickle.load(self.Forecast)
+        try:
+            if SCA:
+                futurepath = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{fdate}.pkl"
+            else:
+                futurepath = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{fdate}.pkl"
+        
+            # load regionalized forecast data
+            #current forecast
+            self.Forecast = open(path, "rb")
+            self.Forecast = pickle.load(self.Forecast)
+            #nexttimestep
+            FutureForecast = open(futurepath, "rb")
+            FutureForecast = pickle.load(FutureForecast)
+        
+        except:
+            print('Last date of simulation, ', fdate)
+        
 
         # load RFE optimized features
-        self.Region_optfeatures = pickle.load(
-            open(f"{self.datapath}\\data\\Optimal_Features.pkl", "rb"))
+        self.Region_optfeatures = pickle.load(open(f"{self.datapath}/data/Optimal_Features.pkl", "rb"))
 
         # Reorder regions
         self.Forecast = {k: self.Forecast[k] for k in self.Region_list}
@@ -234,22 +260,17 @@ class NSM_SCA(SWE_Prediction):
             self.Prev_df = pd.concat([self.Prev_df, self.predictions[Region][[self.date]]])  # pandas 2.0 update
             # self.Prev_df = self.Prev_df.append(pd.DataFrame(self.predictions[Region][self.date]))
             self.Prev_df = pd.DataFrame(self.Prev_df)
+            
+            if fdate < f"2019-06-30":
+                #save prediction for the next timesteps prev SWE feature
+                FutureForecast[Region]['prev_SWE'] = self.predictions[Region][self.date]
 
-            self.predictions[Region].to_hdf(f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\predictions{self.date}.h5", key=Region)
-            #self.predictions[Region].to_hdf(f"{self.cwd}\\Predictions\\predictions{self.date}.h5", key=Region)
-
-        # load submission DF and add predictions, if locations are removed or added, this needs to be modified
-      #  self.subdf = pd.read_csv(f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\submission_format_{self.prevdate}.csv")
-        #self.subdf.index = list(self.subdf.iloc[:, 0].values)
-        #self.subdf = self.subdf.iloc[:, 1:]  # TODO replace with drop("cell_id")
-
-        #self.sub_index = self.subdf.index
-        # reindex predictions
-        #self.Prev_df = self.Prev_df.loc[self.sub_index]
-        #self.subdf[self.date] = self.Prev_df[self.date].astype(float)
-        # subdf.index.names = [' ']
-        #self.subdf.to_csv(f"{self.cwd}\\Predictions\\{self.threshold}\\Predictions\\submission_format_{self.date}.csv")
-        #self.Prev_df.to_csv(f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\submission_format_{self.date}.csv")
+        #save future timestep prediction
+        if fdate < f"2019-06-30":
+            fpath = open(futurepath, "wb")
+            # write the python object (dict) to pickle file
+            pickle.dump(FutureForecast, fpath)
+            fpath.close()
         
         #set prediction file year
         if self.date > f"{self.date[:4]}-09-30":
@@ -257,7 +278,7 @@ class NSM_SCA(SWE_Prediction):
         else:
             year = str(int(self.date[:4]))
                     
-        self.Prev_df.to_hdf(f"{self.cwd}\\Predictions\\Hold_Out_Year\\Predictions\\{year}_predictions.h5", key=self.date)
+        self.Prev_df.to_hdf(f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/{year}_predictions.h5", key=self.date)
 
         # set up model prediction function
 
@@ -297,7 +318,7 @@ class NSM_SCA(SWE_Prediction):
             # load and scale data
 
             # set up model checkpoint to be able to extract best models
-            checkpoint_filepath = self.cwd + '\\Model\\' + Region + '\\'
+            checkpoint_filepath = self.cwd + '/Model/' + Region + '/'
             model = keras.models.load_model(f"{checkpoint_filepath}{Region}_model.keras")
             #model = checkpoint_filepath + Region + '_model.h5'
             #print(model)

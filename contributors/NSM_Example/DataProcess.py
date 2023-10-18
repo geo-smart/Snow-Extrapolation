@@ -35,11 +35,12 @@ def DataProcess(test_year,datapath, cwd):
 
     #set data path
     training_path = f"{datapath}/data"
-    RegionTrain = {}
+    #RegionTrain = {}
     print('Processing training datarames for each region')
-    for region in tqdm(Region_list):   
+    #for region in tqdm(Region_list):   
         #load the RegionTrain DF, select the key grid cell colums, and add to training DF.
-        RegionTrain[region] = pd.read_hdf(f"{training_path}/RegionTrain_SCA.h5", region)
+     #   RegionTrain[region] = pd.read_hdf(f"{training_path}/RegionTrain_SCA.h5", region)
+    RegionTrain= pickle.load(open(f"{training_path}/RegionTrain_SCA.pkl", "rb"))
 
     #load RFE optimized features
     Region_optfeatures= pickle.load(open(f"{training_path}/Optimal_Features.pkl", "rb"))
