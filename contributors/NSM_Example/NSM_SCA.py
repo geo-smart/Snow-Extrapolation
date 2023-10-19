@@ -1,4 +1,6 @@
-# Import packages
+#created by Dr. Ryan C. Johnson as part of the Cooperative Institute for Research to Operations in Hydrology (CIROH)
+# SWEET supported by the University of Alabama and the Alabama Water Institute
+# 10-19-2023
 
 # NSM Packages
 from National_Snow_Model import SWE_Prediction

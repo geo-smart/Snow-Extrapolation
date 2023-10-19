@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
+#Standardized Snow Water Equivalent Evaluation Tool (SWEET)
+#created by Dr. Ryan C. Johnson as part of the Cooperative Institute for Research to Operations in Hydrology (CIROH)
+# SWEET supported by the University of Alabama and the Alabama Water Institute
+# 10-19-2023
 
 #Load packages
 import os

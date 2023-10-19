@@ -1,14 +1,20 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
+#created by Dr. Ryan C. Johnson as part of the Cooperative Institute for Research to Operations in Hydrology (CIROH)
+# SWEET supported by the University of Alabama and the Alabama Water Institute
+# 10-19-2023
 
 import os
 import pandas as pd
 import warnings
 import pickle
 from datetime import date, datetime, timedelta
+import geopandas as gpd
+from tqdm import tqdm
+import contextily as cx #contextily-1.4.0 mercantile-1.2.1
+import matplotlib.pyplot as plt
+import glob
+import contextlib
+from PIL import Image
+from IPython.display import Image as ImageShow
 warnings.filterwarnings("ignore")
 
 
@@ -184,8 +190,11 @@ def HindCast_DataProcess(datelist,Region_list, cwd, datapath):
     EvalTest = {}
     for Region in Region_list:
         EvalTest[Region] = TestsiteData[TestsiteData['Region'] == Region]
-        EvalTest[Region]['y_pred_fSCA'] = EvalTest[Region]['y_pred']
-    
+        EvalTest[Region]['y_pred_fSCA'] = EvalTest[Region]['y_pred']*2.54
+        EvalTest[Region]['y_test'] = EvalTest[Region]['y_test']*2.54
+        EvalTest[Region]['y_test_prev'] = EvalTest[Region]['y_test_prev']*2.54
+        EvalTest[Region]['prev_SWE'] = EvalTest[Region]['prev_SWE']*2.54
+        
     return  EvalTest
         
 
@@ -291,3 +300,81 @@ def Region_id(df):
             df['Region'].iloc[i] = loc
     return df
 
+#function for making a gif/timelapse of the hindcast
+def Snowgif(cwd, datelist, Region_list):
+    
+    #Load prediction file with geospatial information
+    path = f"{cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_2018-10-02.pkl"
+    geofile =open(path, "rb")
+    geofile = pickle.load(geofile)
+    cols = ['Long', 'Lat']
+
+    #convet to one dataframe
+    geo_df = pd.DataFrame()
+    for Region in Region_list:
+        geofile[Region] = geofile[Region][cols]
+        geo_df = pd.concat([geo_df, geofile[Region]])
+
+    #convert to geodataframe
+    geo_df = gpd.GeoDataFrame(
+        geo_df, geometry=gpd.points_from_xy(geo_df.Long, geo_df.Lat), crs="EPSG:4326"
+    )
+
+    path = f"{cwd}/Predictions/Hold_Out_Year/Predictions/2019_predictions.h5"
+    #get predictions for each timestep
+    print('processing predictions into geodataframe')
+    for date in tqdm(datelist):
+        pred = pd.read_hdf(path, key = date)
+        geo_df[date] = pred[date]*2.54 #convert to cm
+
+
+    #convert to correct crs.
+    geo_df = geo_df.to_crs(epsg=3857)
+
+    print('creating figures for each prediction timestep') #This could be threaded/multiprocessed to speed up
+    for date in tqdm(datelist):
+    #date = "2019-03-26"
+        cols = ['geometry', date]
+        plotdf = geo_df[cols]
+        fig, ax = plt.subplots(figsize=(10, 10))
+        #plot only locations with SWE
+        plotdf = plotdf[plotdf[date] > 0]
+        ax = plotdf.plot(date, 
+                     #figsize=(10, 10), 
+                     alpha=0.5, 
+                     markersize = 10,
+                     edgecolor="k", 
+                     vmin =1, 
+                     vmax =250,
+                    legend = True,
+                    legend_kwds={"label": "Snow Water Equivalent (cm)", "orientation": "vertical"},
+                    ax = ax)
+        ax.set_xlim(-1.365e7, -1.31e7)
+        ax.set_ylim(4.25e6, 5.25e6)
+        cx.add_basemap(ax)
+        ax.set_axis_off()
+        ax.text(-1.35e7, 5.17e6, f"SWE estimate: {date}", fontsize =14)
+        #plt.title(f"SWE estimate: {date}")
+        plt.savefig(f"{cwd}/Predictions/Hold_Out_Year/Predictions/Figures/SWE_{date}.PNG")
+        plt.close(fig)
+            
+    # filepaths
+    print('Figures complete, creating .gif image')
+    fp_in =f"{cwd}/Predictions/Hold_Out_Year/Predictions/Figures/SWE_*.PNG"
+    fp_out = f"{cwd}/Predictions/Hold_Out_Year/Predictions/Figures/SWE_2019.gif"
+
+    # use exit stack to automatically close opened images
+    with contextlib.ExitStack() as stack:
+
+        # lazily load images
+        imgs = (stack.enter_context(Image.open(f))
+                for f in sorted(glob.glob(fp_in)))
+
+        # extract  first image from iterator
+        img = next(imgs)
+
+        # https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
+        img.save(fp=fp_out, format='GIF', append_images=imgs,
+                 save_all=True, duration=200, loop=0)
+    #Display gif    
+    return ImageShow(fp_out)

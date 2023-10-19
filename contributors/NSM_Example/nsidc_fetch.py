@@ -1,3 +1,7 @@
+#created by Josh Christensen and Dr. Ryan C. Johnson as part of the Cooperative Institute for Research to Operations in Hydrology (CIROH) REU Summer 2023
+# SWEET supported by the University of Alabama and the Alabama Water Institute
+# 10-19-2023
+
 import requests
 import getpass
 import socket

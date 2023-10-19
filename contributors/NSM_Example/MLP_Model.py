@@ -1,4 +1,7 @@
-#Simplify function to just train, set up as .py file
+#created by Dr. Ryan C. Johnson as part of the Cooperative Institute for Research to Operations in Hydrology (CIROH)
+# SWEET supported by the University of Alabama and the Alabama Water Institute
+# 10-19-2023
+
 import os
 from os import listdir
 from os.path import isfile, join
@@ -193,8 +196,12 @@ def Prelim_Eval(cwd,Predictions):
         #set up model checkpoint to be able to extract best models
         checkpoint_filepath = f"{cwd}/Model/{Region}/"
         SWEmax = np.load(f"{checkpoint_filepath}/{Region}_SWEmax.npy")
-    #Run model evaluate function
-        #print(model.evaluate(X_test, y_test))
+        #convert to cm
+        pred_obs['y_test'] = pred_obs['y_test']*2.54
+        pred_obs['y_pred'] = pred_obs['y_pred']*2.54
+        pred_obs['y_pred_fSCA'] = pred_obs['y_pred_fSCA']*2.54
+
+        
         #Run model evaluate function
         r2_test = sklearn.metrics.r2_score(pred_obs['y_test'], pred_obs['y_pred'])
         rmse_test = sklearn.metrics.mean_squared_error(pred_obs['y_test'], pred_obs['y_pred'], squared = False)
