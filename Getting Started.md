@@ -6,9 +6,9 @@
 # Getting Started: 
 The first step is to identify a folder location where you would like to work in a development environment.
 We suggest a location that will be able to easily access streamflow predictions to make for easy evaluation of your model.
-Using the command prompt, change your working directory to this folder and git clone [Snow-Extrapolation](https://github.com/whitelightning450/Snow-Extrapolation)
+Using the command prompt, change your working directory to this folder and git clone [Snow-Extrapolation](https://github.com/geo-smart/Snow-Extrapolation)
 
-    git clone https://github.com/whitelightning450/Snow-Extrapolation
+    git clone https://github.com/geo-smart/Snow-Extrapolation
 
 
 ## Virtual Environment
