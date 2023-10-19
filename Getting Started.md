@@ -50,3 +50,8 @@ We will now be installing the packages needed to use NSM_env, as well as other t
 Enter the following code block in your Anaconda Command Prompt to get the required dependencies with the appropriate versions, note, you must be in the correct working directory:
 
     pip install -r requirements.txt
+
+### Explore the model through an example
+
+The objective of the project is to optimize the NSM, or SSM in this case.
+To do, the next step is to explore the [NSM Example](./contributors/NSM_Example/methods.ipynb).
