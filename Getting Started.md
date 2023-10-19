@@ -42,7 +42,7 @@ Under contributors, there is a start to finish example to get participants up to
 To double check you have the correct working environment, open the  up the [Methods](./contributors/NSM_Example/methods.ipynb) file, click the kernel tab on the top toolbar, and select the NSM_env. 
 The NSM_env should show up on the top right of the Jupyter Notebook.
 
-[Notebook_env](./contributors/NSM_Example/Images/NSM-Kernel.JPG)
+![Notebook_env](./contributors/NSM_Example/Images/NSM-Kernel.JPG)
 
 
 ### Loading other Python dependencies
