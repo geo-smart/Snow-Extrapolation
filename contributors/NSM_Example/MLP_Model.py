@@ -77,6 +77,19 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
         checkpoint_filepath = f"{cwd}/Model/{Region}/"
 
         checkpoint_filename = checkpoint_filepath+checkpointfilename
+        
+        #clear all files from model folder
+        try:
+            files = os.listdir(checkpoint_filepath)
+            for file in files:
+                if file.endswith(".h5"):
+                    file_path = os.path.join(checkpoint_filepath, file)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            print("All previous files deleted successfully.")
+        except OSError:
+            print("Error occurred while deleting files.")
+
         callback = keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filename,
         monitor='val_loss',
