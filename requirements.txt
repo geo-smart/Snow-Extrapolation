@@ -31,4 +31,6 @@ vincent==0.4.4
 xarray==2022.6.0
 pandas==1.4.3
 pyarrow==13.0.0
-
+contextily==1.4.0 
+mercantile==1.2.1
+nbformat
