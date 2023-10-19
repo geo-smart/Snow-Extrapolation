@@ -190,7 +190,8 @@ def HindCast_DataProcess(datelist,Region_list, cwd, datapath):
     EvalTest = {}
     for Region in Region_list:
         EvalTest[Region] = TestsiteData[TestsiteData['Region'] == Region]
-        EvalTest[Region]['y_pred_fSCA'] = EvalTest[Region]['y_pred']*2.54
+        EvalTest[Region]['y_pred'] = EvalTest[Region]['y_pred']*2.54
+        EvalTest[Region]['y_pred_fSCA'] = EvalTest[Region]['y_pred']
         EvalTest[Region]['y_test'] = EvalTest[Region]['y_test']*2.54
         EvalTest[Region]['y_test_prev'] = EvalTest[Region]['y_test_prev']*2.54
         EvalTest[Region]['prev_SWE'] = EvalTest[Region]['prev_SWE']*2.54
