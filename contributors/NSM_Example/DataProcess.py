@@ -34,7 +34,7 @@ def DataProcess(test_year,datapath, cwd):
     #set data path
     training_path = f"{datapath}/data"
     #RegionTrain = {}
-    print('Processing training datarames for each region')
+    print('Processing training dataframes for each region')
     #for region in tqdm(Region_list):   
         #load the RegionTrain DF, select the key grid cell colums, and add to training DF.
      #   RegionTrain[region] = pd.read_hdf(f"{training_path}/RegionTrain_SCA.h5", region)
