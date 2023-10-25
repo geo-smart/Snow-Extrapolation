@@ -13,6 +13,7 @@ List all participants on the project.
 * Team member
 * Team member
 * Team member
+* Ziqi Yin - University of Colorado, Boulder
 * ...
 
 ## National-Snow-Model Summary
