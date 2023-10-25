@@ -12,7 +12,7 @@ List all participants on the project.
 * [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
 * Team member
 * Team member
-* Team member
+* Tahi Wiggins - University of Maine
 * ...
 
 ## National-Snow-Model Summary
