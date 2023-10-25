@@ -49,7 +49,7 @@ def natural_keys(text):
     return [ atof(c) for c in re.split(r'[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)', text) ]
 
 
-def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test, node_list):
+def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test, node_list=[128, 128, 64, 64, 32, 16], shuffle=True):
     
     #Get regions
     Regions = list(RegionTrain.keys())
@@ -99,37 +99,21 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
         #get the training data shape to form MLP model input layer
         shape = X_train.shape
 
-        ##set up layer-nodes for MLP model
-        #LD1=128
-        ##seems like only slight increase in runtime with another layer
-        #LD2=128
-        ##seems like only slight increase in runtime with another layer
-        #LD3=64
-        ##seems like only slight increase in runtime with another layer, sig per improvement 
-        #LD4=64
-        #LD5=32
-        #LD6=16
-        #LD7=5
-        
+        ##set up layer-nodes for MLP model       
         input_1 = layers.Input(shape=(shape[1],)) 
-        
         for i, LDn in enumerate(node_list):
             if i == 0:
                 x = layers.Dense(LDn, activation="relu")(input_1)
             else:
                 x = layers.Dense(LDn, activation="relu")(x)
-        #x = layers.Dense(LD3, activation="relu")(x)
-        #x = layers.Dense(LD4, activation="relu")(x)
-        #x = layers.Dense(LD5, activation="relu")(x)
-        #x = layers.Dense(LD6, activation="relu")(x)
-        x = layers.Dense(1)(x)
+        x = layers.Dense(1)(x) # add last layer with single node
 
         model = keras.Model(inputs=input_1,outputs=x)
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(1e-4), metrics=['mse'])
         print(model.summary())
 
         model.fit(X_train, y_train, epochs=epochs, batch_size=100,
-                            validation_data=(X_test,y_test),shuffle=True,callbacks=[callback], verbose=0)
+                            validation_data=(X_test,y_test),shuffle=shuffle,callbacks=[callback], verbose=0)
 
 def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
     
