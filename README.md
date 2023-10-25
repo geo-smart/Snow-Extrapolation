@@ -13,7 +13,7 @@ List all participants on the project.
 * Team member
 * Team member
 * Team member
-* ...
+* Dr. Md Shahabul Alam - The University of Alabama
 
 ## National-Snow-Model Summary
 
