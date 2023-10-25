@@ -13,7 +13,7 @@ List all participants on the project.
 * Team member
 * Team member
 * Team member
-* ...
+* Preetika Kaur- University of Wyoming
 
 ## National-Snow-Model Summary
 
