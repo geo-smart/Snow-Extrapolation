@@ -10,8 +10,8 @@ The [Getting started](./Getting%20Started.md) file will help new users create a 
 List all participants on the project.
 
 * [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
-* New Colaborator - University of Alabama
-* Team member
+* Scott Henderson - University of Washington
+* Savalan Naser Neisary	- University of Alabama
 * Team member
 * ...
 
