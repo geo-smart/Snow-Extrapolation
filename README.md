@@ -11,7 +11,7 @@ List all participants on the project.
 
 * [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
 * Scott Henderson - University of Washington
-* Team member
+* Tony Castronova - CUAHSI
 * Team member
 * ...
 
