@@ -49,7 +49,7 @@ def natural_keys(text):
     return [ atof(c) for c in re.split(r'[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)', text) ]
 
 
-def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test, node_list=[128, 128, 64, 64, 32, 16], shuffle=True):
+def Model_train(cwd, epochs, batch_size, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test, node_list=[128, 128, 64, 64, 32, 16], shuffle=True):
     
     #Get regions
     Regions = list(RegionTrain.keys())
@@ -63,7 +63,8 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
         y_test = RegionObs_Test[Region].copy()
 
         #remove Date, VIIRS_SCA, and hasSnow from training and testing df
-        colrem = ['Date', 'VIIRS_SCA', 'hasSnow']
+        colrem = ['Date', 'hasSnow']
+        #colrem = ['Date', 'VIIRS_SCA', 'hasSnow']
         X_train.drop(columns = colrem, axis =1, inplace = True)
         X_test.drop(columns = colrem, axis =1, inplace = True)
 
@@ -112,7 +113,7 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(1e-4), metrics=['mse'])
         print(model.summary())
 
-        model.fit(X_train, y_train, epochs=epochs, batch_size=100,
+        model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size,
                             validation_data=(X_test,y_test),shuffle=shuffle,callbacks=[callback], verbose=0)
 
 def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
@@ -130,7 +131,8 @@ def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
         y_test = RegionObs_Test[Region].copy()
         
      #Set up model to predict 0" SWE if hasSnow = False
-        VIIRScols = ['Date', 'VIIRS_SCA' , 'hasSnow']
+        #VIIRScols = ['Date', 'VIIRS_SCA' , 'hasSnow']
+        VIIRScols = ['Date', 'hasSnow']
         y_pred_VIIRS = X_test[VIIRScols].copy(deep = True)
         y_pred_VIIRS['y_pred_fSCA'] = np.nan
 
@@ -185,7 +187,7 @@ def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
     return Predictions
 
 
-def Prelim_Eval(cwd,Predictions):
+def Prelim_Eval(cwd,Predictions,verbose=True):
     #Get regions
     Regions = list(Predictions.keys())
     Performance = pd.DataFrame()
@@ -209,13 +211,12 @@ def Prelim_Eval(cwd,Predictions):
         r2_fSCA = sklearn.metrics.r2_score(pred_obs['y_test'], pred_obs['y_pred_fSCA'])
         rmse_fSCA = sklearn.metrics.mean_squared_error(pred_obs['y_test'], pred_obs['y_pred_fSCA'], squared = False)
 
-
-        print(' R2 is ', r2_test)
-        print(' RMSE is ', rmse_test)
-        print(' R2 fSCA is ', r2_fSCA)
-        print(' RMSE fSCA is ', rmse_fSCA)
-
-        #print("MSE: %.4f" % mean_squared_error(y_test, y_pred))
+        if verbose == True:
+            print(' R2 is ', r2_test)
+            print(' RMSE is ', rmse_test)
+            print(' R2 fSCA is ', r2_fSCA)
+            print(' RMSE fSCA is ', rmse_fSCA)
+            #print("MSE: %.4f" % mean_squared_error(y_test, y_pred))
 
         error_data = np.array([Region, round(r2_test,2),  
                                round(rmse_test,2), 
@@ -226,17 +227,18 @@ def Prelim_Eval(cwd,Predictions):
                              columns = ['Region', 'R2', 'RMSE', 'R2_fSCA', 'RMSE_fSCA'])
         Performance = Performance.append(error, ignore_index = True)
 
-        #plot graph
-        plt.scatter( pred_obs['y_test'],pred_obs['y_pred'], s=5, color="blue", label="Predictions")
-        plt.scatter( pred_obs['y_test'],pred_obs['y_pred_fSCA'], s=5, color="red", label="Predictions_wfFSCA")
-        plt.plot([0,SWEmax], [0,SWEmax], color = 'red', linestyle = '--')
-        plt.xlabel('Observed SWE')
-        plt.ylabel('Predicted SWE')
+        if verbose == True:
+            #plot graph
+            plt.scatter( pred_obs['y_test'],pred_obs['y_pred'], s=5, color="blue", label="Predictions")
+            plt.scatter( pred_obs['y_test'],pred_obs['y_pred_fSCA'], s=5, color="red", label="Predictions_wfFSCA")
+            plt.plot([0,SWEmax], [0,SWEmax], color = 'red', linestyle = '--')
+            plt.xlabel('Observed SWE')
+            plt.ylabel('Predicted SWE')
 
-        #plt.plot(x_ax, y_pred, lw=0.8, color="red", label="predicted")
-        plt.title(Region)
-        plt.legend()
-        plt.show()
+            #plt.plot(x_ax, y_pred, lw=0.8, color="red", label="predicted")
+            plt.title(Region)
+            plt.legend()
+            plt.show()
         
     return Performance
 
