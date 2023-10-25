@@ -12,7 +12,7 @@ List all participants on the project.
 * [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
 * Scott Henderson - University of Washington
 * Savalan Naser Neisary	- University of Alabama
-* Team member
+* Akila Sampath-University of Maryland Baltimore County
 * Preetika Kaur- University of Wyoming
 
 ## National-Snow-Model Summary
