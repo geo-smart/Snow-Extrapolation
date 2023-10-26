@@ -12,11 +12,10 @@ List all participants on the project.
 * [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
 * icezyin - Ziqi Yin - University of Colorado, Boulder
 * Zeeshan Asghar
-* Scott Henderson - University of Washington
+* Tony Castronova - CUAHSI
 * Savalan Naser Neisary	- University of Alabama
 * Akila Sampath-University of Maryland Baltimore County
 * Steven Pestana - University of Washington
-
 
 ## National-Snow-Model Summary
 
