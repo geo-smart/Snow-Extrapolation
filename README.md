@@ -10,12 +10,11 @@ The [Getting started](./Getting%20Started.md) file will help new users create a 
 List all participants on the project.
 
 * [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
-* icezyin
-* Ziqi Yin - University of Colorado, Boulder
+* icezyin - Ziqi Yin - University of Colorado, Boulder
 * Zeeshan Asghar
 * Scott Henderson - University of Washington
 * Savalan Naser Neisary	- University of Alabama
-* Preetika Kaur - University of Wyoming
+* Akila Sampath-University of Maryland Baltimore County
 * Steven Pestana - University of Washington
 
 
