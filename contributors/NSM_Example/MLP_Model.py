@@ -84,8 +84,8 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
             for file in files:
                 if file.endswith(".h5"):
                     file_path = os.path.join(checkpoint_filepath, file)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
             print("All previous files deleted successfully.")
         except OSError:
             print("Error occurred while deleting files.")
