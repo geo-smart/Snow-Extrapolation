@@ -13,6 +13,8 @@ List all participants on the project.
 * Zeeshan Asghar
 * Scott Henderson - University of Washington
 * Savalan Naser Neisary	- University of Alabama
+* manticore810
+* Preetika Kaur- University of Wyoming
 
 ## National-Snow-Model Summary
 
