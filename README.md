@@ -9,13 +9,16 @@ The [Getting started](./Getting%20Started.md) file will help new users create a 
 
 List all participants on the project.
 
-* [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
-* icezyin - Ziqi Yin - University of Colorado, Boulder
-* Zeeshan Asghar
-* Tony Castronova - CUAHSI
+* [Ryan C. Johnson, Phd](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
+* Tahi Wiggins - tahiwiggins - University of Maine
+* Ziqi Yin - icezyin - University of Colorado, Boulder
+* Zeeshan Asghar - University of Utah
+* Tony Castronova, PhD - CUAHSI
+* Irene Garousi-Nejad, PhD - CUAHSI
 * Savalan Naser Neisary	- University of Alabama
 * Akila Sampath-University of Maryland Baltimore County
-* Steven Pestana - University of Washington
+* Steven Pestana, PhD - University of Washington
+* Md Shahabul Alam, PhD - University of Alabama
 
 ## National-Snow-Model Summary
 
