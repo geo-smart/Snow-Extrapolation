@@ -10,11 +10,11 @@ The [Getting started](./Getting%20Started.md) file will help new users create a 
 List all participants on the project.
 
 * [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
+* Zeeshan Asghar
 * Scott Henderson - University of Washington
 * Savalan Naser Neisary	- University of Alabama
 * Preetika Kaur - University of Wyoming
 * Steven Pestana - University of Washington
-* Team Member
 
 ## National-Snow-Model Summary
 
