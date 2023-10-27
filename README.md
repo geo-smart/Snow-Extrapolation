@@ -45,6 +45,31 @@ Complementing the Notebook on algorithm training, a SSWEET Jupyter Notebook will
 All model predictions will be included in the respective model forlder. 
 The ultimate goal of each folder is to function a tutorial to get new users introduced and familiar with different ML algorithms, their application, and their respective strengths and weakness.
 
+## Creating Stable CONDA Environment
+
+* Go to home directory
+```
+cd ~
+```
+* Create a envs directory
+```
+mkdir envs
+```
+* Create .condarc file and link it to a text file
+```
+touch .condarc
+
+ln -s .condarc condarc.txt
+```
+* Add the below lines to the condarc.txt file
+```
+# .condarc
+envs_dirs:
+ - ~/envs
+```
+* Restart your server
+
+
 ## Files
 
 * `.gitignore`
