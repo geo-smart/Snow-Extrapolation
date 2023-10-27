@@ -37,6 +37,7 @@ activation_test = ["relu", "sigmoid", "softmax", "softplus", "softsign", "tanh",
 make_file = True
 
 for activation in activation_test:
+    print(activation)
     for epochs in epochs_test:
         for batch_size in batch_size_test:
             for node_list in node_list_test:
@@ -60,7 +61,7 @@ for activation in activation_test:
                 if make_file == True:
                     print("making output file")
                     print("write to output file")
-                    Performance.to_csv('~/all_tests_performance.csv')
+                    Performance.to_csv('~/all_tests_performance_activation.csv')
                     make_file = False # set to false so that we append to our existing file on next iterations
                 else:
                     print("write to output file")

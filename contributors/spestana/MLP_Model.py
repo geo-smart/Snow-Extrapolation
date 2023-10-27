@@ -49,7 +49,7 @@ def natural_keys(text):
     return [ atof(c) for c in re.split(r'[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)', text) ]
 
 
-def Model_train(cwd, epochs, batch_size, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test, node_list=[128, 128, 64, 64, 32, 16], shuffle=True):
+def Model_train(cwd, epochs, batch_size, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test, node_list=[128, 128, 64, 64, 32, 16], shuffle=True, activation="relu"):
     
     #Get regions
     Regions = list(RegionTrain.keys())
@@ -104,9 +104,9 @@ def Model_train(cwd, epochs, batch_size, RegionTrain, RegionTest, RegionObs_Trai
         input_1 = layers.Input(shape=(shape[1],)) 
         for i, LDn in enumerate(node_list):
             if i == 0:
-                x = layers.Dense(LDn, activation="relu")(input_1)
+                x = layers.Dense(LDn, activation=activation)(input_1)
             else:
-                x = layers.Dense(LDn, activation="relu")(x)
+                x = layers.Dense(LDn, activation=activation)(x)
         x = layers.Dense(1)(x) # add last layer with single node
 
         model = keras.Model(inputs=input_1,outputs=x)
