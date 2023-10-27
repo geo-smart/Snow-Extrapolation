@@ -9,11 +9,16 @@ The [Getting started](./Getting%20Started.md) file will help new users create a 
 
 List all participants on the project.
 
-* [Dr. Ryan C. Johnson](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
-* Team member
-* Team member
-* Team member
-* ...
+* [Ryan C. Johnson, PhD](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
+* Tahi Wiggins - tahiwiggins - University of Maine
+* Ziqi Yin - icezyin - University of Colorado, Boulder
+* Zeeshan Asghar - University of Utah
+* Tony Castronova, PhD - CUAHSI
+* Irene Garousi-Nejad, PhD - CUAHSI
+* Savalan Naser Neisary	- University of Alabama
+* Akila Sampath-University of Maryland Baltimore County
+* Steven Pestana, PhD - University of Washington
+* Md Shahabul Alam, PhD - University of Alabama
 
 ## National-Snow-Model Summary
 
@@ -44,6 +49,31 @@ Each algorithm will have a unique model folder with Jupyter Notebook file that i
 Complementing the Notebook on algorithm training, a SSWEET Jupyter Notebook will load model predictions for the approapriate testing period to determine model performance.
 All model predictions will be included in the respective model forlder. 
 The ultimate goal of each folder is to function a tutorial to get new users introduced and familiar with different ML algorithms, their application, and their respective strengths and weakness.
+
+## Creating Stable CONDA Environment
+
+* Go to home directory
+```
+cd ~
+```
+* Create a envs directory
+```
+mkdir envs
+```
+* Create .condarc file and link it to a text file
+```
+touch .condarc
+
+ln -s .condarc condarc.txt
+```
+* Add the below lines to the condarc.txt file
+```
+# .condarc
+envs_dirs:
+ - ~/envs
+```
+* Restart your server
+
 
 ## Files
 

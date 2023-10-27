@@ -17,6 +17,29 @@ I.e., each environment can have its own dependencies or even its own Python vers
 Creating a Python virtual environment is useful if you need different versions of Python or packages for different projects.
 Lastly, a virtual environment keeps things tidy, makes sure your main Python installation stays healthy and supports reproducible and open science.
 
+## Creating Stable CONDA Environment
+Go to home directory
+```
+cd ~
+```
+Create a envs directory
+```
+mkdir envs
+```
+Create .condarc file and link it to a text file
+```
+touch .condarc
+
+ln -s .condarc condarc.txt
+```
+Add the below lines to the condarc.txt file
+```
+# .condarc
+envs_dirs:
+ - ~/envs
+```
+Restart your server
+
 ### Creating your NSM_env Python Virtual Environment
 Since we will be using Jupyter Notebooks for this exercise, we will use the Anaconda command prompt to create our virtual environment. 
 In the command line type: 
