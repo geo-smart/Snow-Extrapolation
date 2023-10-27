@@ -4,6 +4,33 @@
 
 
 # Getting Started: 
+
+## Creating Stable CONDA Environment
+
+* Go to home directory
+```
+cd ~
+```
+* Create a envs directory
+```
+mkdir envs
+```
+* Create .condarc file and link it to a text file
+```
+touch .condarc
+
+ln -s .condarc condarc.txt
+```
+* Add the below lines to the condarc.txt file
+```
+# .condarc
+envs_dirs:
+ - ~/envs
+```
+* Restart your server
+
+
+
 The first step is to identify a folder location where you would like to work in a development environment.
 We suggest a location that will be able to easily access streamflow predictions to make for easy evaluation of your model.
 Using the command prompt, change your working directory to this folder and git clone [Snow-Extrapolation](https://github.com/geo-smart/Snow-Extrapolation)
