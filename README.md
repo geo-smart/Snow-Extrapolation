@@ -9,7 +9,7 @@ The [Getting started](./Getting%20Started.md) file will help new users create a 
 
 List all participants on the project.
 
-* [Ryan C. Johnson, Phd](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
+* [Ryan C. Johnson, PhD](https://awi.ua.edu/about/staff/ryan-johnson-ph-d/) - The University of Alabama
 * Tahi Wiggins - tahiwiggins - University of Maine
 * Ziqi Yin - icezyin - University of Colorado, Boulder
 * Zeeshan Asghar - University of Utah
