@@ -15,12 +15,32 @@ import glob
 import contextlib
 from PIL import Image
 from IPython.display import Image as ImageShow
+import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
+import os
 warnings.filterwarnings("ignore")
 
 
 #Function for initializing a hindcast
-def Hindcast_Initialization(cwd, datapath, new_year, threshold, Region_list): 
+def Hindcast_Initialization(new_year, threshold, Region_list): 
     print('Creating files for a historical simulation within ', str(Region_list)[1:-1], ' regions for water year ', new_year)
+    
+    #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)
     
     #Grab existing files based on water year
     prev_year = '2022'
@@ -33,41 +53,19 @@ def Hindcast_Initialization(cwd, datapath, new_year, threshold, Region_list):
     #threshold
     threshold = threshold
 
-    #SWE_new = {}
-    #for region in Region_list:
-        #The below file will serve as a starting poinw
-     #   SWE_new[region] = pd.read_hdf(f"{datapath}/data/PreProcessed/predictions{prev_year}-09-24.h5", key = region)
-      #  SWE_new[region].rename(columns = {prev_date:new_date}, inplace = True)
-       # SWE_new[region].to_hdf(f"{cwd}/Predictions/Hold_Out_Year/Predictions/predictions{new_year}-09-25.h5", key = region)
-   
-
-    #set the ground measures features DF    
-    #obs_old = pd.read_csv(f"{datapath}/data/PreProcessed/ground_measures_features_{prev_year}-09-24.csv")
-    #obs_old.rename(columns = {'Unnamed: 0':'station_id', prev_date:new_date}, inplace = True)
-    #obs_old.set_index('station_id', inplace = True)
-    #obs_old[new_date] = 0
-    #obs_old.to_csv(f"{datapath}/data/PreProcessed/ground_measures_features_{new_year}-09-25.csv")
-    #obs_old.to_hdf(f"{datapath}/data/PreProcessed/ground_measures_features.h5", key = f"{new_year}-09-25")
-
-    #print('Ground measures features df complete')
-
-    #load the ground_measures_features meta w/preds
-    #obs_meta_old = pd.read_csv(f"{datapath}/data/PreProcessed/DA_ground_measures_features_{prev_year}-09-24.csv")
-    #obs_meta_old.rename(columns = {'Unnamed: 0':'station_id'}, inplace = True)
-    #obs_meta_old.set_index('station_id', inplace = True)
-    #obs_meta_old['Date'] = new_date
-    #obs_meta_old.to_csv(f"{datapath}/data/PreProcessed/DA_ground_measures_features_{new_year}-09-25.csv")
-    #obs_meta_old.to_hdf(f"{datapath}/data/PreProcessed/DA_ground_measures_features.h5", key =f"{new_year}-09-25")
-    #print('Ground measures features meta df complete')
-
     #Make a submission DF
-    old_preds = pd.read_csv(f"{datapath}/data/PreProcessed/submission_format_{prev_date}.csv")
+    #old_preds = pd.read_csv(f"{datapath}/data/PreProcessed/submission_format_{prev_date}.csv")
+    csv_key = f"data/PreProcessed/submission_format_{prev_date}.csv"
+    obj = bucket.Object(csv_key)
+    body = obj.get()['Body']
+    old_preds = pd.read_csv(body)
+    
     old_preds['2022-10-01'] = 0
     new_preds_date = new_year+'-10-02'
     old_preds.rename(columns = {'2022-10-02':new_preds_date}, inplace = True)
     old_preds.set_index('cell_id', inplace = True)
     #old_preds.to_csv(f"{cwd}/Predictions/Hold_Out_Year/Predictions/submission_format_{new_date}.csv")
-    old_preds.to_hdf(f"{cwd}/Predictions/Hold_Out_Year/Predictions/submission_format.h5", key =f"{new_date}")
+    old_preds.to_hdf(f"./Predictions/Hold_Out_Year/Predictions/submission_format.h5", key =f"{new_date}")
     
     
     #define start and end date for list of dates
@@ -99,12 +97,30 @@ def daterange(start_date, end_date):
         
         
         
-def HindCast_DataProcess(datelist,Region_list, cwd, datapath):
-       #get held out year observational data
+def HindCast_DataProcess(datelist,Region_list):
+     #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)
+    
+    #get held out year observational data
+    #load 
+
     Test = pd.DataFrame()
     cols = ['Date','y_test','Long', 'Lat', 'elevation_m', 'WYWeek', 'northness', 'VIIRS_SCA', 'hasSnow', 'Region']
     for Region in Region_list:
-        T= pd.read_hdf(f"{datapath}/data/RegionWYTest.h5", Region)
+        T= pd.read_hdf(f"{home}/NSM/Snow-Extrapolation/data/RegionWYTest.h5", Region)
         T['Region'] = Region
         #T['y_pred'] = -9999
         T.rename(columns = {'SWE':'y_test'}, inplace = True)
@@ -119,7 +135,7 @@ def HindCast_DataProcess(datelist,Region_list, cwd, datapath):
     TestsiteDataPSWE = pd.DataFrame()
     for date in datelist:
        # print(date)
-        preds[date] = pd.read_hdf(f"{cwd}/Predictions/Hold_Out_Year/Predictions/2019_predictions.h5", key = date)
+        preds[date] = pd.read_hdf(f"./Predictions/Hold_Out_Year/Predictions/2019_predictions.h5", key = date)
         
         #get previous SWE predictions for DF
         startdate = str(datetime.strptime(date, '%Y-%m-%d').date() -timedelta(7))
@@ -128,7 +144,7 @@ def HindCast_DataProcess(datelist,Region_list, cwd, datapath):
             prev_SWE[startdate] = 0
             
         else:
-            prev_SWE[startdate] = pd.read_hdf(f"{cwd}/Predictions/Hold_Out_Year/Predictions/2019_predictions.h5", key = startdate)
+            prev_SWE[startdate] = pd.read_hdf(f"./Predictions/Hold_Out_Year/Predictions/2019_predictions.h5", key = startdate)
         
         
         Tdata = Test[Test['Date'] == date]
@@ -200,13 +216,15 @@ def HindCast_DataProcess(datelist,Region_list, cwd, datapath):
         
 
 #function to add prediction locations in training dataset but not in the submission format file        
-def addPredictionLocations(Region_list, datapath, cwd, startdate):
+def addPredictionLocations(Region_list, startdate):
+    #load access key
+    home = os.path.expanduser('~')
     print('Making sure all testing locations are in prediction dataframe.')
     #get held out year observational data
     Test = pd.DataFrame()
     cols = ['Date','y_test', 'y_pred','Long', 'Lat', 'elevation_m', 'WYWeek', 'northness', 'VIIRS_SCA', 'hasSnow', 'Region']
     for Region in Region_list:
-        T= pd.read_hdf(f"{datapath}/data/RegionWYTest.h5", Region)
+        T= pd.read_hdf(f"{home}NSM/Snow-Extrapolation/data/RegionWYTest.h5", Region)
         T['Region'] = Region
         T['y_pred'] = -9999
         T.rename(columns = {'SWE':'y_test'}, inplace = True)
@@ -224,7 +242,7 @@ def addPredictionLocations(Region_list, datapath, cwd, startdate):
         except:
             rows_not_pred.append(row)
 
-    regions = pd.read_pickle(f"{datapath}\\data\\PreProcessed\\RegionVal.pkl")
+    regions = pd.read_pickle(f"{home}/NSM/Snow-Extrapolation/data/PreProcessed/RegionVal.pkl")
     regionval = pd.DataFrame()
     Region_list2 = ['N_Sierras', 'S_Sierras']
     for region in Region_list2:
@@ -257,7 +275,7 @@ def addPredictionLocations(Region_list, datapath, cwd, startdate):
     regionDict['S_Sierras_High'] = regionDict['S_Sierras'][regionDict['S_Sierras']['elevation_m'] > 2500]
 
     # write the python object (dict) to pickle file
-    path = f"{datapath}\\data\\PreProcessed\\RegionVal2.pkl"
+    path = f"{home}/NSM/Snow-Extrapolation/data/PreProcessed/RegionVal2.pkl"
     RVal = open(path, "wb")
     pickle.dump(regionDict, RVal)
     
@@ -265,7 +283,7 @@ def addPredictionLocations(Region_list, datapath, cwd, startdate):
     startdate = datetime.strptime(startdate, '%Y-%m-%d').date() -timedelta(7)
     prev_SWE = {}
     for region in Region_list:
-        prev_SWE[region] = pd.read_hdf(f"{cwd}\\Predictions\\Hold_Out_Year\\Predictions\\predictions{startdate}.h5", key =  region)                       
+        prev_SWE[region] = pd.read_hdf(f"./Predictions/Hold_Out_Year/Predictions/predictions{startdate}.h5", key =  region)                       
 
         pSWEcols = list(prev_SWE[region].columns) 
         rValcols = list(regionDict[region].columns)
@@ -278,7 +296,7 @@ def addPredictionLocations(Region_list, datapath, cwd, startdate):
         regionDict[region]['WYWeek'] = 52  
         regionDict[region].set_index('cell_id', inplace = True)
         #save dictionary   
-        regionDict[region].to_hdf(f"{cwd}\\Predictions\\Hold_Out_Year\\Predictions\\predictions{startdate}.h5", key = region)
+        regionDict[region].to_hdf(f"./Predictions/Hold_Out_Year/Predictions/predictions{startdate}.h5", key = region)
                                               
 
            # return regionDict
@@ -302,10 +320,10 @@ def Region_id(df):
     return df
 
 #function for making a gif/timelapse of the hindcast
-def Snowgif(cwd, datelist, Region_list):
+def Snowgif(datelist, Region_list):
     
     #Load prediction file with geospatial information
-    path = f"{cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_2018-10-02.pkl"
+    path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_2018-10-02.pkl"
     geofile =open(path, "rb")
     geofile = pickle.load(geofile)
     cols = ['Long', 'Lat']
@@ -321,7 +339,7 @@ def Snowgif(cwd, datelist, Region_list):
         geo_df, geometry=gpd.points_from_xy(geo_df.Long, geo_df.Lat), crs="EPSG:4326"
     )
 
-    path = f"{cwd}/Predictions/Hold_Out_Year/Predictions/2019_predictions.h5"
+    path = f"./Predictions/Hold_Out_Year/Predictions/2019_predictions.h5"
     #get predictions for each timestep
     print('processing predictions into geodataframe')
     for date in tqdm(datelist):
@@ -356,13 +374,13 @@ def Snowgif(cwd, datelist, Region_list):
         ax.set_axis_off()
         ax.text(-1.35e7, 5.17e6, f"SWE estimate: {date}", fontsize =14)
         #plt.title(f"SWE estimate: {date}")
-        plt.savefig(f"{cwd}/Predictions/Hold_Out_Year/Predictions/Figures/SWE_{date}.PNG")
+        plt.savefig(f"./Predictions/Hold_Out_Year/Predictions/Figures/SWE_{date}.PNG")
         plt.close(fig)
             
     # filepaths
     print('Figures complete, creating .gif image')
-    fp_in =f"{cwd}/Predictions/Hold_Out_Year/Predictions/Figures/SWE_*.PNG"
-    fp_out = f"{cwd}/Predictions/Hold_Out_Year/Predictions/Figures/SWE_2019.gif"
+    fp_in =f"./Predictions/Hold_Out_Year/Predictions/Figures/SWE_*.PNG"
+    fp_out = f"./Predictions/Hold_Out_Year/Predictions/Figures/SWE_2019.gif"
 
     # use exit stack to automatically close opened images
     with contextlib.ExitStack() as stack:
