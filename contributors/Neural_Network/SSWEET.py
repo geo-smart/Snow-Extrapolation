@@ -31,15 +31,19 @@ import hvplot.pandas
 import holoviews as hv
 from holoviews import dim, opts, streams
 from bokeh.models import HoverTool
+import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
+import os
 import json
 import warnings; warnings.filterwarnings("ignore")
 
 #A function to load model predictions
-def load_Predictions(cwd):
-    Regions = ['N_Sierras','S_Sierras_Low', 'S_Sierras_High']
+def load_Predictions(Region_list):
+    #Regions = ['N_Sierras','S_Sierras_Low', 'S_Sierras_High']
     RegionTest = {}
-    for Region in Regions:
-        RegionTest[Region] = pd.read_hdf(f"{cwd}/Predictions/Testing/Predictions.h5", key = Region)
+    for Region in Region_list:
+        RegionTest[Region] = pd.read_hdf("./Predictions/Testing/Predictions.h5", key = Region)
         
         #convert predictions/observations to SI units, aka, cm
         RegionTest[Region]['y_test'] = RegionTest[Region]['y_test']*2.54
@@ -128,48 +132,65 @@ def parityplot(RegionTest):
       
 
     #All Sierras
-    y_test = Compare_DF['y_test']
-    y_pred = Compare_DF['y_pred']
-    y_pred_fSCA = Compare_DF['y_pred_fSCA']
-    r2 = sklearn.metrics.r2_score(y_test, y_pred)
-    rmse = sklearn.metrics.mean_squared_error(y_test, y_pred, squared = False) 
-    kge, r, alpha, beta = he.evaluator(he.kge, y_pred, y_test)
-    pbias = he.evaluator(he.pbias, y_pred, y_test)
+    #y_test = Compare_DF['y_test']
+    #y_pred = Compare_DF['y_pred']
+    #y_pred_fSCA = Compare_DF['y_pred_fSCA']
+    #r2 = sklearn.metrics.r2_score(y_test, y_pred)
+    #rmse = sklearn.metrics.mean_squared_error(y_test, y_pred, squared = False) 
+    #kge, r, alpha, beta = he.evaluator(he.kge, y_pred, y_test)
+    #pbias = he.evaluator(he.pbias, y_pred, y_test)
     
-    r2_fSCA = sklearn.metrics.r2_score(y_test, y_pred_fSCA)
-    rmse_fSCA = sklearn.metrics.mean_squared_error(y_test, y_pred_fSCA, squared = False)
-    kge_fSCA, r_fSCA, alpha_fSCA, beta_fSCA = he.evaluator(he.kge, y_pred_fSCA, y_test)
-    pbias_fSCA = he.evaluator(he.pbias, y_pred_fSCA, y_test)
+    #r2_fSCA = sklearn.metrics.r2_score(y_test, y_pred_fSCA)
+    #rmse_fSCA = sklearn.metrics.mean_squared_error(y_test, y_pred_fSCA, squared = False)
+    #kge_fSCA, r_fSCA, alpha_fSCA, beta_fSCA = he.evaluator(he.kge, y_pred_fSCA, y_test)
+    #pbias_fSCA = he.evaluator(he.pbias, y_pred_fSCA, y_test)
     
     
-    error_data = np.array(['Sierras_All',
-                            round(r2,2),  
-                               round(rmse,2), 
-                               round(kge[0],2),
-                               round(pbias[0],2),
-                               round(r2_fSCA,2),
-                               round(rmse_fSCA,2),
-                              round(kge_fSCA[0],2),
-                              round(pbias_fSCA[0],2)])
+    #error_data = np.array(['Sierras_All',
+ #                           round(r2,2),  
+   #                            round(rmse,2), 
+    #                           round(kge[0],2),
+     #                          round(pbias[0],2),
+      #                         round(r2_fSCA,2),
+       #                        round(rmse_fSCA,2),
+        #                      round(kge_fSCA[0],2),
+         #                     round(pbias_fSCA[0],2)])
 
-    error = pd.DataFrame(data = error_data.reshape(-1, len(error_data)), 
-                             columns = ['Region', 
-                                        'R2',
-                                        'RMSE',
-                                        'KGE', 
-                                        'PBias', 
-                                        'R2_fSCA',
-                                        'RMSE_fSCA',
-                                        'KGE_fSCA', 
-                                        'PBias_fSCA'
-                                       ])
-    Performance = Performance.append(error, ignore_index = True)
+    #error = pd.DataFrame(data = error_data.reshape(-1, len(error_data)), 
+     #                        columns = ['Region', 
+      #                                  'R2',
+       #                                 'RMSE',
+        #                                'KGE', 
+         #                               'PBias', 
+          #                              'R2_fSCA',
+           #                             'RMSE_fSCA',
+            #                            'KGE_fSCA', 
+             #                           'PBias_fSCA'
+              #                         ])
+    #Performance = Performance.append(error, ignore_index = True)
     display(Performance)
     
     
     
 #Plot the error/prediction compared to different variables
-def Model_Vs(RegionTest,metric,model_output, datapath):
+def Model_Vs(RegionTest,metric,model_output):
+    #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)
+
+    
     #Get regions
     Regions = list(RegionTest.keys())
      
@@ -177,11 +198,16 @@ def Model_Vs(RegionTest,metric,model_output, datapath):
     Compare_DF = pd.DataFrame()
     cols = ['Region', 'y_test', 'y_pred', 'y_pred_fSCA', metric]
     
-    RegionTrain_SCA_path = f"{datapath}/data/RegionTrain_SCA.pkl"   
+    #RegionTrain_SCA_path = f"{datapath}/data/RegionTrain_SCA.pkl"   
+    file_key = 'data/RegionTrain_SCA.pkl'
+    obj = bucket.Object(file_key)
+    body = obj.get()['Body']
+    df_Region = pd.read_pickle(body)
+    
     # load regionalized forecast data
     #current forecast
-    df_Region = open(RegionTrain_SCA_path, "rb")
-    df_Region = pickle.load(df_Region)
+    #df_Region = open(RegionTrain_SCA_path, "rb")
+    #df_Region = pickle.load(df_Region)
     
     
     for Region in Regions:
@@ -189,7 +215,6 @@ def Model_Vs(RegionTest,metric,model_output, datapath):
         try:
             df = RegionTest[Region][cols]
         except:
-            #df_Region =  pd.read_hdf(f"{datapath}/data/RegionTrain_SCA.h5", Region)
             df_Region[Region] = pd.DataFrame(df_Region[Region][metric])
             df_Region[Region].drop_duplicates(inplace = True)
             df_Region[Region].reset_index(inplace = True)
@@ -245,13 +270,38 @@ def Model_Vs(RegionTest,metric,model_output, datapath):
     
     
 #create geopandas dataframes to map predictions and obs
-def createGeoSpatial(datapath, Sites):
-    #Load RegionTrain and Snotel Geospatial DFs
-    GeoSpatial = open(f"{datapath}/data/RegionTrain.pkl", "rb")
-    GeoSpatial = pickle.load(GeoSpatial)
+def createGeoSpatial(Sites, Region_list):
+     #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)  
     
-    Snotel = open(f"{datapath}/data/RegionSnotel_Train.pkl", "rb")
-    Snotel = pickle.load(Snotel)
+    #Load RegionTrain and Snotel Geospatial DFs
+    #GeoSpatial = open(f"{datapath}/data/RegionTrain.pkl", "rb")
+    #GeoSpatial = pickle.load(GeoSpatial)
+    
+    file_key = 'data/RegionTrain.pkl'
+    obj = bucket.Object(file_key)
+    body = obj.get()['Body']
+    GeoSpatial = pd.read_pickle(body)
+    
+    #Snotel = open(f"{datapath}/data/RegionSnotel_Train.pkl", "rb")
+    #Snotel = pickle.load(Snotel)
+    file_key = 'data/RegionSnotel_Train.pkl'
+    obj = bucket.Object(file_key)
+    body = obj.get()['Body']
+    Snotel = pd.read_pickle(body)
     
     #separate Sierras high and low
     GeoSpatial['S_Sierras_High'] = GeoSpatial['S_Sierras'][GeoSpatial['S_Sierras']['elevation_m'] > 2500]
@@ -260,12 +310,12 @@ def createGeoSpatial(datapath, Sites):
     Snotel['S_Sierras_High'] = Snotel['S_Sierras'][Snotel['S_Sierras']['elevation_m'] > 2500]
     Snotel['S_Sierras_Low'] = Snotel['S_Sierras'][Snotel['S_Sierras']['elevation_m'] <= 2500]
     
-    Regions = ['N_Sierras','S_Sierras_Low', 'S_Sierras_High']
+    #Regions = ['N_Sierras','S_Sierras_Low', 'S_Sierras_High']
     
     GeoPred = pd.DataFrame()
     GeoObs = pd.DataFrame()
     
-    for Region in Regions:
+    for Region in Region_list:
         #Create Geospatial prediction point DF
         Pred_Geo = GeoSpatial[Region].copy()
         Snotel_Geo = Snotel[Region].copy()
@@ -295,9 +345,31 @@ def createGeoSpatial(datapath, Sites):
 
 #Get SNOTEL sites used as features
 #load RFE optimized features
-def InSitu_Locations(datapath, RegionTest):
+def InSitu_Locations(RegionTest):
+    
+     #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
 
-    Region_optfeatures= pickle.load(open(f"{datapath}/data/Optimal_Features.pkl", "rb"))
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)  
+
+    #Region_optfeatures= pickle.load(open(f"{datapath}/data/Optimal_Features.pkl", "rb"))
+    file_key = 'data/Optimal_Features.pkl'
+    obj = bucket.Object(file_key)
+    body = obj.get()['Body']
+    Region_optfeatures = pd.read_pickle(body)
+    
+    
     Sites = {}
     Regions = list(RegionTest.keys())
     Sites_list = []
@@ -382,7 +454,7 @@ def df_transpose(df, obs):
 
 #Map locations and scoring of sites
 #def Map_Plot_Eval(self, freq, df, size):
-def Map_Plot_Eval(datapath, RegionTest, yaxis, error_metric):   
+def Map_Plot_Eval(RegionTest, yaxis, error_metric, Region_list):   
     
     #Make sure dates are in datetime formate
     for key in RegionTest.keys():
@@ -393,10 +465,10 @@ def Map_Plot_Eval(datapath, RegionTest, yaxis, error_metric):
     
     #Get SNOTEL sites used as features
     #load RFE optimized features
-    Sites = InSitu_Locations(datapath, RegionTest)
+    Sites = InSitu_Locations(RegionTest)
 
     #Get the geometric DF for prediction locations and in situ obs
-    GeoDF, Snotel = createGeoSpatial(datapath, Sites)
+    GeoDF, Snotel = createGeoSpatial(Sites, Region_list)
 
     print('Plotting monitoring station locations')
     cols =  ['cell_id', 'Lat', 'Long', 'geometry']
@@ -407,8 +479,9 @@ def Map_Plot_Eval(datapath, RegionTest, yaxis, error_metric):
     centeroid = df_map.dissolve().centroid
 
     # Create a Map instance
-    m = folium.Map(location=[centeroid.y[0], centeroid.x[0]], tiles = 'Stamen Terrain', zoom_start=8, 
-                   control_scale=True)
+   # m = folium.Map(location=[centeroid.y[0], centeroid.x[0]], tiles = 'Stamen Terrain', zoom_start=8, 
+    #               control_scale=True)
+    m = folium.Map(location=[centeroid.y[0], centeroid.x[0]], zoom_start=8, control_scale=True)
     #add legend to map
     if error_metric == 'KGE':
         colormap = cm.StepColormap(colors = ['darkred', 'r', 'orange', 'g'], vmin = 0, vmax = 1, index = [0,0.4,0.6,0.85,1])

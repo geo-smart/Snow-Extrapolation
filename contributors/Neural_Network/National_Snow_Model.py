@@ -55,6 +55,10 @@ import warnings
 from progressbar import ProgressBar
 import shapely.geometry
 import threading
+import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
+import os
 
 # import contextily as ctx
 #import ulmo
@@ -64,7 +68,7 @@ warnings.filterwarnings("ignore")
 
 
 class SWE_Prediction():
-    def __init__(self, cwd,datapath, date, delta=7, Regions= ['N_Sierras']):
+    def __init__(self, date, delta=7, Regions= ['N_Sierras']):
         self.date = date
         self.delta = delta
         self.prevdate = pd.to_datetime(date) - timedelta(days=delta)
@@ -72,23 +76,27 @@ class SWE_Prediction():
         self.Regions = Regions
 
         # set path directory
-        self.cwd = cwd
-        self.datapath = datapath
+        #self.cwd = cwd
+        #self.datapath = datapath
+        
+         #load access key
+        home = os.path.expanduser('~')
+        keypath = "apps/AWSaccessKeys.csv"
+        access = pd.read_csv(f"{home}/{keypath}")
+
+        #start session
+        session = boto3.Session(
+            aws_access_key_id=access['Access key ID'][0],
+            aws_secret_access_key=access['Secret access key'][0],
+        )
+        s3 = session.resource('s3')
+        #AWS bucket information
+        bucket_name = 'national-snow-model'
+        #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+        self.bucket = s3.Bucket(bucket_name)
+        self.home = home
+
   
-
-        # make other date tags
-        #  self.datestr = self.date.strftime.strftime('%Y-%m-%d')
-        # m = datestr[5:7]
-        # d = datestr[-2:]
-        # y = datestr[:4]
-
-        # pm = self.prevdate[0:2]
-        # p = self.prevdate[3:5]
-        # py = self.prevdate[-4:]
-
-        # self.datekey = m[1]+'/'+d+'/'+y
-        # self.date = y+'-'+m+'-'+d
-        # self.prevcol = py+'-'+pm+'-'+p
 
         # Define Model Regions
         self.Region_list = Regions
@@ -379,7 +387,7 @@ class SWE_Prediction():
 
     def Get_Monitoring_Data(self, getdata = False):
         if getdata ==True:
-            GM_template = pd.read_csv(f"{self.datapath}/data/PreProcessed/ground_measures_features_template.csv")
+            GM_template = pd.read_csv(f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/ground_measures_features_template.csv")
             GM_template = GM_template.rename(columns={'Unnamed: 0': 'station_id'})
             GM_template.index = GM_template['station_id']
             cols = ['Date']
@@ -443,7 +451,7 @@ class SWE_Prediction():
 
             #SWE_df.to_csv(self.cwd + '/Data/Pre_Processed_DA/ground_measures_features_' + date + '.csv')
             self.SWE_df = SWE_df
-            self.SWE_df.to_hdf(f"{self.datapath}/data/PreProcessed/ground_measures_features.h5", key = date)
+            self.SWE_df.to_hdf(f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/ground_measures_features.h5", key = date)
 
     def get_SNOTEL_Threaded(self, sitecode, start_date, end_date):
         # print(sitecode)
@@ -607,8 +615,8 @@ class SWE_Prediction():
             self.SWE_df = self.SWE_df.rename(columns={'index': 'station_id'})
             self.SWE_df = self.SWE_df.set_index('station_id')
 
-            #self.SWE_df.to_csv(f"{self.datapath}/data/PreProcessed/ground_measures_features_{date}.csv")
-            self.SWE_df.to_hdf(f"{self.datapath}/data/PreProcessed/ground_measures_features.h5", key = date)
+            #self.SWE_df.to_csv(f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/ground_measures_features_{date}.csv")
+            self.SWE_df.to_hdf(f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/ground_measures_features.h5", key = date)
             # print("saved to:", self.cwd + '/Data/Pre_Processed_DA/ground_measures_features_' + date + '.csv')
 
     # Data Assimilation script, takes date and processes to run model.
@@ -616,13 +624,13 @@ class SWE_Prediction():
 
         # load ground truth values (SNOTEL): Testing
         #obs_path = self.datapath + '/data/PreProcessed/ground_measures_features_' + self.date + '.csv'
-        obs_path = f"{self.datapath}/data/PreProcessed/ground_measures_features.h5"
+        obs_path = f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/ground_measures_features.h5"
         #self.GM_Test = pd.read_csv(obs_path)
         self.GM_Test = pd.read_hdf(obs_path, key = self.date)
         # load ground truth values (SNOTEL): previous week, these have Na values filled by prev weeks obs +/- mean region Delta SWE
         #obs_path = self.datapath + '/data/PreProcessed/DA_ground_measures_features_' + self.prevdate + '.csv'
         #self.GM_Prev = pd.read_csv(obs_path)
-        obs_path = f"{self.datapath}/data/PreProcessed/DA_ground_measures_features.h5"
+        obs_path = f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/DA_ground_measures_features.h5"
         self.GM_Prev = pd.read_hdf(obs_path, key = self.prevdate)
         
         
@@ -631,7 +639,7 @@ class SWE_Prediction():
 
         # All coordinates of 1 km polygon used to develop ave elevation, ave slope, ave aspect
         #path = self.datapath + '/data/PreProcessed/RegionVal.pkl'  # TODO change to RegionVals?
-        path = self.datapath + '/data/PreProcessed/RegionVal2.pkl'
+        path = f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/RegionVal2.pkl"
         # load regionalized geospatial data
         self.RegionTest = open(path, "rb")
         self.RegionTest = pd.read_pickle(self.RegionTest)
@@ -640,7 +648,7 @@ class SWE_Prediction():
 
         self.prev_SWE = {}
         for region in self.Regions:
-            self.prev_SWE[region] = pd.read_hdf(self.cwd + '/Predictions/Hold_Out_Year/Predictions/predictions' + self.prevdate + '.h5',
+            self.prev_SWE[region] = pd.read_hdf(f"/Predictions/Hold_Out_Year/Predictions/predictions{self.prevdate}.h5",
                                                 region)  # this was
             self.prev_SWE[region] = pd.DataFrame(self.prev_SWE[region][self.prevdate])
             self.prev_SWE[region] = self.prev_SWE[region].rename(columns={self.prevdate: 'prev_SWE'})
@@ -663,7 +671,7 @@ class SWE_Prediction():
         self.GM_Test = self.GM_Test.rename(columns={'variable': 'Date', 'value': 'SWE'})
 
         # load ground truth meta
-        self.GM_Meta = pd.read_csv(self.datapath + '/data/PreProcessed/ground_measures_metadata.csv')
+        self.GM_Meta = pd.read_csv(f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/ground_measures_metadata.csv")
 
         # merge testing ground truth location metadata with snotel data
         self.GM_Test = self.GM_Meta.merge(self.GM_Test, how='inner', on='station_id')
@@ -715,7 +723,7 @@ class SWE_Prediction():
 
         # Need to save 'updated non-na' df's
         #GM_path = self.datapath + '/data/PreProcessed/DA_ground_measures_features_' + self.date + '.csv'
-        GM_path = f"{self.datapath}/data/PreProcessed/DA_ground_measures_features.h5"
+        GM_path = f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/DA_ground_measures_features.h5"
         #self.Future_GM_Pred.to_csv(GM_path)
         self.Future_GM_Pred.to_hdf(GM_path, key = self.date)
         # This needs to be here to run in next codeblock
@@ -874,7 +882,7 @@ class SWE_Prediction():
 
         # load RFE optimized features
         self.Region_optfeatures = pickle.load(
-            open(self.cwd + "/Model/Prev_SWE_Models_Final/opt_features_prevSWE.pkl", "rb"))
+            open(f"{self.home}/NSM/Snow-Extrapolation/data/Optimal_Features.pkl", "rb"))
 
         # Reorder regions
         self.Forecast = {k: self.Forecast[k] for k in self.Region_list}
@@ -895,10 +903,10 @@ class SWE_Prediction():
             # self.Prev_df = self.Prev_df.append(pd.DataFrame(self.predictions[Region][self.date]))
             self.Prev_df = pd.DataFrame(self.Prev_df)
 
-            self.predictions[Region].to_hdf(self.cwd + '/Predictions/predictions' + self.date + '.h5', key=Region)
+            self.predictions[Region].to_hdf(f"./Predictions/predictions{self.date}.h5", key=Region)
 
         # load submission DF and add predictions, if locations are removed or added, this needs to be modified
-        self.subdf = pd.read_csv(self.cwd + '/Predictions/submission_format_' + self.prevdate + '.csv')
+        self.subdf = pd.read_csv(f"./Predictions/submission_format_{self.prevdate}.csv")
         self.subdf.index = list(self.subdf.iloc[:, 0].values)
         self.subdf = self.subdf.iloc[:, 1:]  # TODO replace with drop("cell_id")
 
@@ -908,7 +916,7 @@ class SWE_Prediction():
         self.subdf[self.date] = self.Prev_df[self.date].astype(float)
         # subdf.index.names = [' ']
         #self.subdf.to_csv(self.cwd + '/Predictions/submission_format_' + self.date + '.csv')
-        self.subdf.to_csv(f"{self.cwd}/Predictions/submission_format_{self.date}.csv")
+        self.subdf.to_csv(f"./Predictions/submission_format_{self.date}.csv")
      
 
     def Predict(self, Region):
@@ -930,7 +938,7 @@ class SWE_Prediction():
         # set up model checkpoint to be able to extract best models
         #checkpoint_filepath = self.cwd + '/Model/Prev_SWE_Models_Final/' + Region + '/'
         #model = checkpoint_filepath + Region + '_model.h5'
-        checkpoint_filepath = self.cwd + '/Model/' + Region + '/'
+        checkpoint_filepath = f"./Model/{Region}/"
         model = keras.models.load_model(f"{checkpoint_filepath}{Region}_model.keras")
         print(model)
         model = load_model(model)
