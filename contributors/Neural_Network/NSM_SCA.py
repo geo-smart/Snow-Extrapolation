@@ -41,12 +41,16 @@ from pathlib import Path
 from tqdm import tqdm
 import time
 import warnings
+import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
+import os
 
 warnings.filterwarnings("ignore")
 
 class NSM_SCA(SWE_Prediction):
 
-    def __init__(self, cwd: Union[str, Path], datapath: Union[str, Path], date: Union[str, datetime], delta=7, timeDelay=3, threshold=0.2, Regions = ['N_Sierras']):
+    def __init__(self, date: Union[str, datetime], delta=7, timeDelay=3, threshold=0.2, Regions = ['N_Sierras']):
         """
             Initializes the NSM_SCA class by calling the superclass constructor.
 
@@ -57,11 +61,21 @@ class NSM_SCA(SWE_Prediction):
                 timeDelay (int): Use the SCA rasters from [timeDelay] days ago. Simulates operations in the real world.
                 threshold (float): The threshold for NDSI, if greater than this value, it is considered to be snow.
         """
-        if type(datapath) != Path:
-            self.datapath = Path(datapath)  # Convert to Path object if necessary
-        
-        if type(cwd) != Path:
-            self.cwd = Path(cwd)  # Convert to Path object if necessary
+          #load access key
+        home = os.path.expanduser('~')
+        keypath = "apps/AWSaccessKeys.csv"
+        access = pd.read_csv(f"{home}/{keypath}")
+
+        #start session
+        session = boto3.Session(
+            aws_access_key_id=access['Access key ID'][0],
+            aws_secret_access_key=access['Secret access key'][0],
+        )
+        s3 = session.resource('s3')
+        #AWS bucket information
+        bucket_name = 'national-snow-model'
+        #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+        self.bucket = s3.Bucket(bucket_name)
 
         if type(date) != datetime:
             date = datetime.strptime(date, "%Y-%m-%d")  # Convert to datetime object if necessary
@@ -70,19 +84,20 @@ class NSM_SCA(SWE_Prediction):
         self.Regions = Regions
         
         # Call superclass constructor
-        SWE_Prediction.__init__(self, cwd=str(cwd),datapath=str(datapath), date=date.strftime("%Y-%m-%d"), delta=delta, Regions = self.Regions)
+        SWE_Prediction.__init__(self, date=date.strftime("%Y-%m-%d"), delta=delta, Regions = self.Regions)
 
         self.timeDelay = timeDelay
         self.delayedDate = date - pd.Timedelta(days=timeDelay)
         
          #Change the working directory
         if self.date > f"{self.date[:4]}-09-30":
-            self.folder = f"{self.date[:4]}-{str(int(self.date[:4])+1)}NASA"
+            #self.folder = f"{self.date[:4]}-{str(int(self.date[:4])+1)}NASA"
+            self.folder = f"WY{str(int(self.date[:4])+1)}"
 
         else:
-            self.folder = f"{str(int(self.date[:4])-1)}-{str(int(self.date[:4]))}NASA"
+            self.folder = f"WY{str(int(self.date[:4]))}"
 
-        self.SCA_folder = f"{self.datapath}/data/VIIRS_SCA/{self.folder}"
+        self.SCA_folder = f"{home}NSM/Snow-Extrapolation/data/VIIRS_SCA/{self.folder}"
         self.threshold = threshold * 100  # Convert percentage to values used in VIIRS NDSI
 
         #self.auth = ea.login(strategy="netrc")
@@ -138,7 +153,7 @@ class NSM_SCA(SWE_Prediction):
                 extent (list[float, float, float, float]): The extent of the prediction dataframe.
         """
         #regions = pd.read_pickle(f"{self.datapath}/data/PreProcessed/RegionVal.pkl")
-        regions = pd.read_pickle(f"{self.datapath}/data/PreProcessed/RegionVal2.pkl")
+        regions = pd.read_pickle(f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/RegionVal2.pkl")
     #pkl file workaround, 2i2c is not playing nice with pkl files, changed to h5
         #regions = {}
         #for Region in self.Regions:
@@ -169,7 +184,7 @@ class NSM_SCA(SWE_Prediction):
         try:
             self.Forecast  # Check if forecast dataframe has been initialized
         except AttributeError:
-            path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl" #This may need to be the region
+            path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl" #This may need to be the region
             self.Forecast = pd.read_pickle(path)
 
         region_df = self.Forecast[region]
@@ -195,14 +210,14 @@ class NSM_SCA(SWE_Prediction):
             Augments the forecast dataframes with SCA data.
         """
         print("Calculating mean SCA for each geometry in each region...")
-        self.Forecast = pd.read_pickle(f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl")
+        self.Forecast = pd.read_pickle(f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl")
 
         # Augment each Forecast dataframes
         for region in tqdm(self.Region_list):
             self.Forecast[region] = self.augment_SCA(region).drop(columns=["geometry"])
 
         # Save augmented forecast dataframes
-        path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
+        path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
         file = open(path, "wb")
 
         # write the python object (dict) to pickle file
@@ -215,9 +230,9 @@ class NSM_SCA(SWE_Prediction):
         # load first SWE observation forecasting dataset with prev and delta swe for observations.
 
         if SCA:
-            path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
+            path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
         else:
-            path = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl"
+            path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl"
          
         #set up predictions for next timestep
         fdate = pd.to_datetime(self.date)+timedelta(7)
@@ -225,9 +240,9 @@ class NSM_SCA(SWE_Prediction):
 
         try:
             if SCA:
-                futurepath = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{fdate}.pkl"
+                futurepath = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{fdate}.pkl"
             else:
-                futurepath = f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/Prediction_DF_{fdate}.pkl"
+                futurepath = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{fdate}.pkl"
         
             # load regionalized forecast data
             #current forecast
@@ -242,7 +257,7 @@ class NSM_SCA(SWE_Prediction):
         
 
         # load RFE optimized features
-        self.Region_optfeatures = pickle.load(open(f"{self.datapath}/data/Optimal_Features.pkl", "rb"))
+        self.Region_optfeatures = pickle.load(open(f"{self.home}/NSM/Snow-Extrapolation/data/Optimal_Features.pkl", "rb"))
 
         # Reorder regions
         self.Forecast = {k: self.Forecast[k] for k in self.Region_list}
@@ -280,7 +295,7 @@ class NSM_SCA(SWE_Prediction):
         else:
             year = str(int(self.date[:4]))
                     
-        self.Prev_df.to_hdf(f"{self.cwd}/Predictions/Hold_Out_Year/Predictions/{year}_predictions.h5", key=self.date)
+        self.Prev_df.to_hdf(f"./Predictions/Hold_Out_Year/Predictions/{year}_predictions.h5", key=self.date)
 
         # set up model prediction function
 
@@ -320,7 +335,7 @@ class NSM_SCA(SWE_Prediction):
             # load and scale data
 
             # set up model checkpoint to be able to extract best models
-            checkpoint_filepath = self.cwd + '/Model/' + Region + '/'
+            checkpoint_filepath = f"./Model/{Region}/"
             model = keras.models.load_model(f"{checkpoint_filepath}{Region}_model.keras")
             #model = checkpoint_filepath + Region + '_model.h5'
             #print(model)
