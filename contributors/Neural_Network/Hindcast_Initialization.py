@@ -435,3 +435,66 @@ def Snowgif(datelist, Region_list):
                  save_all=True, duration=200, loop=0)
     #Display gif    
     return ImageShow(fp_out)
+
+
+def Hindcast_to_AWS(modelname):
+     #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)
+    
+    #push NSM data to AWS
+
+    AWSpath = "Hold_Out_Year/"
+    path = f"{home}/NSM/Snow-Extrapolation/contributors/{modelname}/Predictions/{AWSpath}"
+    files = []
+    for file in os.listdir(path):
+         # check the files which are end with specific extension
+        if file.endswith("pkl"):
+            # print path name of selected files
+            files.append(file)
+
+    #Load and push to AWS
+    print('Pushing files to AWS')
+    for file in tqdm(files):
+        filepath = f"{path}/{file}"
+        s3.meta.client.upload_file(Filename= filepath, Bucket=bucket_name, Key=f"{modelname}/{AWSpath}{file}")
+        
+
+def AWS_to_Hindcast(modelname):
+    #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)
+
+    files = []
+    for objects in bucket.objects.filter(Prefix=f"{modelname}/Hold_Out_Year/"):
+        files.append(objects.key)
+
+    print('Downloading files from AWS to local')
+    for file in tqdm(files):
+        filename = file.replace('Neural_Network/Hold_Out_Year/', '')
+        s3.meta.client.download_file(bucket_name, file, f"./Predictions/Hold_Out_Year/{filename}")
+    
