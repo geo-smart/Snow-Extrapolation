@@ -93,11 +93,13 @@ class NSM_SCA(SWE_Prediction):
         if self.date > f"{self.date[:4]}-09-30":
             #self.folder = f"{self.date[:4]}-{str(int(self.date[:4])+1)}NASA"
             self.folder = f"WY{str(int(self.date[:4])+1)}"
+            self.year = str(int(self.date[:4])+1)
 
         else:
             self.folder = f"WY{str(int(self.date[:4]))}"
+            self.year = str(int(self.date[:4]))
 
-        self.SCA_folder = f"{home}NSM/Snow-Extrapolation/data/VIIRS_SCA/{self.folder}"
+        self.SCA_folder = f"{home}/NSM/Snow-Extrapolation/data/VIIRS/{self.folder}/"
         self.threshold = threshold * 100  # Convert percentage to values used in VIIRS NDSI
 
         #self.auth = ea.login(strategy="netrc")
@@ -130,11 +132,11 @@ class NSM_SCA(SWE_Prediction):
             try:
                 DOY = str(date(int(self.date[:4]), int(self.date[5:7]), int(self.date[8:])).timetuple().tm_yday)
                 self.DOYkey = self.date[:4]+DOY
-                self.granules = gpd.read_parquet(f"{self.SCA_folder}/Granules.parquet") 
+                self.granules = gpd.read_parquet(f"{self.home}/NSM/Snow-Extrapolation/data/VIIRS/Granules.parquet") 
                 self.granules.sort_values('h', inplace = True)
                 files = [v for v in os.listdir(self.SCA_folder) if self.DOYkey in v]
                 files = [x for x in files if x.endswith('tif')]
-                files = [self.SCA_folder+'/'+s for s in files]
+                files = [self.SCA_folder+s for s in files]
                 self.granules['filepath'] = files
                 print('VIIRS fSCA files found locally')
             except:
@@ -184,7 +186,7 @@ class NSM_SCA(SWE_Prediction):
         try:
             self.Forecast  # Check if forecast dataframe has been initialized
         except AttributeError:
-            path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl" #This may need to be the region
+            path = f"./Predictions/Hold_Out_Year/Prediction_DF_{self.date}.pkl" #This may need to be the region
             self.Forecast = pd.read_pickle(path)
 
         region_df = self.Forecast[region]
@@ -210,14 +212,14 @@ class NSM_SCA(SWE_Prediction):
             Augments the forecast dataframes with SCA data.
         """
         print("Calculating mean SCA for each geometry in each region...")
-        self.Forecast = pd.read_pickle(f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl")
+        self.Forecast = pd.read_pickle(f"./Predictions/Hold_Out_Year/Prediction_DF_{self.date}.pkl")
 
         # Augment each Forecast dataframes
         for region in tqdm(self.Region_list):
             self.Forecast[region] = self.augment_SCA(region).drop(columns=["geometry"])
 
         # Save augmented forecast dataframes
-        path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
+        path = f"./Predictions/Hold_Out_Year/Prediction_DF_SCA_{self.date}.pkl"
         file = open(path, "wb")
 
         # write the python object (dict) to pickle file
@@ -226,35 +228,37 @@ class NSM_SCA(SWE_Prediction):
         # close file
         file.close()
 
-    def SWE_Predict(self, SCA=True):
+    def SWE_Predict(self, SCA=True, NewSim = True):
         # load first SWE observation forecasting dataset with prev and delta swe for observations.
 
         if SCA:
-            path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{self.date}.pkl"
+            path = f"./Predictions/Hold_Out_Year/Prediction_DF_SCA_{self.date}.pkl"
         else:
-            path = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{self.date}.pkl"
+            path = f"./Predictions/Hold_Out_Year/Prediction_DF_{self.date}.pkl"
+            
+        if NewSim == False:
          
-        #set up predictions for next timestep
-        fdate = pd.to_datetime(self.date)+timedelta(7)
-        fdate = fdate.strftime("%Y-%m-%d")
+            #set up predictions for next timestep
+            fdate = pd.to_datetime(self.date)+timedelta(7)
+            fdate = fdate.strftime("%Y-%m-%d")
 
-        try:
-            if SCA:
-                futurepath = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_SCA_{fdate}.pkl"
-            else:
-                futurepath = f"./Predictions/Hold_Out_Year/Predictions/Prediction_DF_{fdate}.pkl"
-        
-            # load regionalized forecast data
-            #current forecast
-            self.Forecast = open(path, "rb")
-            self.Forecast = pickle.load(self.Forecast)
-            #nexttimestep
-            FutureForecast = open(futurepath, "rb")
-            FutureForecast = pickle.load(FutureForecast)
-        
-        except:
-            print('Last date of simulation, ', fdate)
-        
+            try:
+                if SCA:
+                    futurepath = f"./Predictions/Hold_Out_Year/Prediction_DF_SCA_{fdate}.pkl"
+                else:
+                    futurepath = f"./Predictions/Hold_Out_Year/Prediction_DF_{fdate}.pkl"
+
+                # load regionalized forecast data
+                #current forecast
+                self.Forecast = open(path, "rb")
+                self.Forecast = pickle.load(self.Forecast)
+                #nexttimestep
+                FutureForecast = open(futurepath, "rb")
+                FutureForecast = pickle.load(FutureForecast)
+
+            except:
+                print('Last date of simulation, ', fdate)
+
 
         # load RFE optimized features
         self.Region_optfeatures = pickle.load(open(f"{self.home}/NSM/Snow-Extrapolation/data/Optimal_Features.pkl", "rb"))
@@ -278,24 +282,40 @@ class NSM_SCA(SWE_Prediction):
             # self.Prev_df = self.Prev_df.append(pd.DataFrame(self.predictions[Region][self.date]))
             self.Prev_df = pd.DataFrame(self.Prev_df)
             
-            if fdate < f"2019-06-30":
-                #save prediction for the next timesteps prev SWE feature
-                FutureForecast[Region]['prev_SWE'] = self.predictions[Region][self.date]
+            if NewSim == False:
+            
+                if fdate < f"2019-06-30":
+                    #save prediction for the next timesteps prev SWE feature
+                    FutureForecast[Region]['prev_SWE'] = self.predictions[Region][self.date]
 
+        if NewSim == False:
         #save future timestep prediction
-        if fdate < f"2019-06-30":
-            fpath = open(futurepath, "wb")
-            # write the python object (dict) to pickle file
-            pickle.dump(FutureForecast, fpath)
-            fpath.close()
-        
+            if fdate < f"2019-06-30":
+                fpath = open(futurepath, "wb")
+                # write the python object (dict) to pickle file
+                pickle.dump(FutureForecast, fpath)
+                fpath.close()
+                
+        if NewSim == True:
+                #save forecast into pkl file
+                futurepath = f"./Predictions/Hold_Out_Year/Prediction_DF_SCA_{self.date}.pkl"
+                file = open(futurepath, "wb")
+                pickle.dump(self.predictions, file)
+                file.close()
+                
+                futurepath = f"./Predictions/Hold_Out_Year/Prediction_DF_{self.date}.pkl"
+                file = open(futurepath, "wb")
+                pickle.dump(self.predictions, file)
+                file.close()
+
         #set prediction file year
         if self.date > f"{self.date[:4]}-09-30":
             year = str(int(self.date[:4])+1)
         else:
             year = str(int(self.date[:4]))
                     
-        self.Prev_df.to_hdf(f"./Predictions/Hold_Out_Year/Predictions/{year}_predictions.h5", key=self.date)
+        self.Prev_df.to_hdf(f"./Predictions/Hold_Out_Year/{year}_predictions.h5", key=self.date)
+        #self.prev_SWE[region] = pd.read_hdf(f"./Predictions/Hold_Out_Year/predictions{self.prevdate}.h5", region)  
 
         # set up model prediction function
 
@@ -468,6 +488,60 @@ def granuleFilepath(filepath: str) -> str:
         return result[0]  # There should only be one match
     else:
         return ''
+    
+def calculateGranuleExtent(boundingBox: list[float, float, float, float],
+                               day: Union[datetime, str] = datetime(2018, 7, 7)):
+        """
+            Fetches relevant VIIRS granules from NASA's EarthData's CMR API.
+
+            Parameters:
+                boundingBox (list[float, float, float, float]): The bounding box of the region of interest.
+
+                    lower_left_lon – lower left longitude of the box (west)
+                    lower_left_lat – lower left latitude of the box (south)
+                    upper_right_lon – upper right longitude of the box (east)
+                    upper_right_lat – upper right latitude of the box (north)
+
+                day (datetime, str): The day to query granules for.
+
+            Returns:
+                cells (GeoDataFrame): A dataframe containing the horizontal and vertical tile numbers and their boundaries
+
+        """
+
+        if not isinstance(day, datetime):
+            day = datetime.strptime(day, "%Y-%m-%d")
+
+        # Get params situated
+        datasetName = "VNP10A1F"  # NPP-SUOMI VIIRS, but JPSS1 VIIRS also exists
+        version = "2" if day > datetime(2018, 1, 1) else "1"  # TODO v1 supports 2013-on, but v2 currently breaks <2018??? 
+        print('VIIRS version: ', version)
+        query = (ea.granule_query()
+                 .short_name(datasetName)
+                 .version(version)
+                 .bounding_box(*boundingBox)
+                 .temporal(day.strftime("%Y-%m-%d"), day.strftime("%Y-%m-%d"))
+                 # Grab one day's worth of data, we only care about spatial extent
+                 )
+        self.query = query
+        results = query.get(100)  # The Western CONUS is usually 7, so this is plenty
+
+        cells = []
+        for result in results:
+            geometry = shapely.geometry.Polygon(
+                [(x["Longitude"], x["Latitude"]) for x in
+                 result["umm"]["SpatialExtent"]["HorizontalSpatialDomain"]["Geometry"]["GPolygons"][0]["Boundary"][
+                     "Points"]]
+            )
+            cell = {
+                "h": result["umm"]["AdditionalAttributes"][1]["Values"][0],  # HORIZONTAL TILE NUMBER
+                "v": result["umm"]["AdditionalAttributes"][2]["Values"][0],  # VERTICAL TILE NUMBER
+                "geometry": geometry
+            }
+            cells.append(cell)
+
+        geo = gpd.GeoDataFrame(cells, geometry="geometry", crs="EPSG:4326")
+        return geo
 
 
 def fetchGranules(boundingBox: list[float, float, float, float],
@@ -488,7 +562,7 @@ def fetchGranules(boundingBox: list[float, float, float, float],
             Returns:
                 df (GeoDataFrame): A dataframe of the granules that intersect with the bounding box
         """
-
+    print("fetching Granules")
     if extentDF is None:
         cells = calculateGranuleExtent(boundingBox, date)  # Fetch granules from API, no need to check bounding box
     else:

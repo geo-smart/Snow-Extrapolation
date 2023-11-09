@@ -620,7 +620,7 @@ class SWE_Prediction():
             # print("saved to:", self.cwd + '/Data/Pre_Processed_DA/ground_measures_features_' + date + '.csv')
 
     # Data Assimilation script, takes date and processes to run model.
-    def Data_Processing(self):
+    def Data_Processing(self, SCA = True):
 
         # load ground truth values (SNOTEL): Testing
         #obs_path = self.datapath + '/data/PreProcessed/ground_measures_features_' + self.date + '.csv'
@@ -639,17 +639,24 @@ class SWE_Prediction():
 
         # All coordinates of 1 km polygon used to develop ave elevation, ave slope, ave aspect
         #path = self.datapath + '/data/PreProcessed/RegionVal.pkl'  # TODO change to RegionVals?
-        path = f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/RegionVal2.pkl"
+        #path = f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/RegionVal2.pkl"
+        path = f"{self.home}/NSM/Snow-Extrapolation/data/PreProcessed/RegionVal.pkl"
         # load regionalized geospatial data
         self.RegionTest = open(path, "rb")
         self.RegionTest = pd.read_pickle(self.RegionTest)
 
-        ### Load H5 previous prediction files into dictionary
+        ### Load H5 previous prediction files into dictionary - Now pkl files
 
-        self.prev_SWE = {}
-        for region in self.Regions:
-            self.prev_SWE[region] = pd.read_hdf(f"/Predictions/Hold_Out_Year/Predictions/predictions{self.prevdate}.h5",
-                                                region)  # this was
+        #self.prev_SWE = {}
+        if SCA == True:
+            path = f"./Predictions/Hold_Out_Year/Prediction_DF_SCA_{self.prevdate}.pkl"
+        if SCA == False:
+            path = f"./Predictions/Hold_Out_Year/Prediction_DF_{self.prevdate}.pkl"
+        
+        self.prev_SWE = open(path, 'rb')
+        self.prev_SWE = pd.read_pickle(self.prev_SWE)
+        for region in self.Regions: #no need for this right now, already saving previous date SWE prediction as 'prev_SWE'
+            #self.prev_SWE[region] = pd.read_hdf(f"./Predictions/Hold_Out_Year/predictions{self.prevdate}.h5", region)  - changed to pickle, see above
             self.prev_SWE[region] = pd.DataFrame(self.prev_SWE[region][self.prevdate])
             self.prev_SWE[region] = self.prev_SWE[region].rename(columns={self.prevdate: 'prev_SWE'})
 
@@ -794,16 +801,16 @@ class SWE_Prediction():
 
             # save dictionaries as pkl
         # create a binary pickle file 
+    
+        path = f"./Predictions/Hold_Out_Year/Prediction_DF_{self.date}.pkl"
 
-        #path = self.cwd + '/Predictions/Hold_Out_Year/Predictions/Prediction_DF_' + self.date + '.pkl'
-
-        #RVal = open(path, "wb")
+        RVal = open(path, "wb")
 
         # write the python object (dict) to pickle file
-        #pickle.dump(self.RegionTest, RVal)
+        pickle.dump(self.RegionTest, RVal)
 
         # close file
-        #RVal.close()
+        RVal.close()
 
     # Get the week number of the observations, from beginning of water year
     def week_num(self, region):

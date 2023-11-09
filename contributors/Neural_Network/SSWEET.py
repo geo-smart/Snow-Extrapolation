@@ -168,7 +168,8 @@ def parityplot(RegionTest):
              #                           'PBias_fSCA'
               #                         ])
     #Performance = Performance.append(error, ignore_index = True)
-    display(Performance)
+#    display(Performance)
+    return Performance
     
     
     
