@@ -24,6 +24,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import tensorflow as tf
+from progressbar import ProgressBar
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.models import load_model
@@ -31,6 +32,10 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Activation, Dropout
 import threading  # this is the threading library
 import warnings; warnings.filterwarnings("ignore")
+import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
+import os
 
 def atof(text):
     try:
@@ -49,12 +54,13 @@ def natural_keys(text):
     return [ atof(c) for c in re.split(r'[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)', text) ]
 
 
-def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test):
+def Model_train(epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs_Test, Region_list):
+    
     
     #Get regions
-    Regions = list(RegionTrain.keys())
+    #Regions = list(RegionTrain.keys())
     
-    for Region in Regions:
+    for Region in Region_list:
         print('Training model for: ', Region)
         #set up train/test dfs
         X_train = RegionTrain[Region].copy()
@@ -72,9 +78,9 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
         pred_obs = pred_obs.rename(columns = {'SWE':'y_test'})
 
 
-        #set up model checkpoint to be able to extract best models
+        #set up model checkpoint to be able to extract best models, ok to save locaally
         checkpointfilename ='ASWE_{val_loss:.8f}.h5'
-        checkpoint_filepath = f"{cwd}/Model/{Region}/"
+        checkpoint_filepath = f"./Model/{Region}/"
 
         checkpoint_filename = checkpoint_filepath+checkpointfilename
         
@@ -84,8 +90,8 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
             for file in files:
                 if file.endswith(".h5"):
                     file_path = os.path.join(checkpoint_filepath, file)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
             print("All previous files deleted successfully.")
         except OSError:
             print("Error occurred while deleting files.")
@@ -127,14 +133,15 @@ def Model_train(cwd, epochs, RegionTrain, RegionTest, RegionObs_Train, RegionObs
         model.fit(X_train, y_train, epochs=epochs, batch_size=100,
                             validation_data=(X_test,y_test),shuffle=True,callbacks=[callback], verbose=0) #shuffle -> false, can you get repeatable model results this way?
 
-def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
+def Model_predict(RegionTest, RegionObs_Test, RegionTest_notScaled, Region_list):
+    
     
     Predictions = {}
     
     #Get regions
-    Regions = list(RegionTest.keys())
+    #Regions = list(RegionTest.keys())
     
-    for Region in Regions:
+    for Region in Region_list:
     
      #set up test dfs
         X_test = RegionTest[Region].copy()
@@ -157,7 +164,7 @@ def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
         pred_obs = pred_obs.rename(columns = {'SWE':'y_test'})
 
         #set up model checkpoint to be able to extract best models
-        checkpoint_filepath = f"{cwd}/Model/{Region}/"
+        checkpoint_filepath = f"./Model/{Region}/"
 
         #load the model with highest performance
         bestmodel = [f for f in listdir(checkpoint_filepath) if isfile(join(checkpoint_filepath, f))]
@@ -192,12 +199,12 @@ def Model_predict(cwd, RegionTest, RegionObs_Test, RegionTest_notScaled):
         df = df.loc[:,~df.columns.duplicated()].copy()
 
         Predictions[Region] = df
-        df.to_hdf(f"{cwd}/Predictions/Testing/Predictions.h5", Region)
+        df.to_hdf(f"./Predictions/Testing/Predictions.h5", Region)
         
     return Predictions
 
 
-def Prelim_Eval(cwd,Predictions):
+def Prelim_Eval(Predictions):
     #Get regions
     Regions = list(Predictions.keys())
     Performance = pd.DataFrame()
@@ -207,7 +214,7 @@ def Prelim_Eval(cwd,Predictions):
         pred_obs = Predictions[Region]
         
         #set up model checkpoint to be able to extract best models
-        checkpoint_filepath = f"{cwd}/Model/{Region}/"
+        checkpoint_filepath = f"./Model/{Region}/"
         SWEmax = np.load(f"{checkpoint_filepath}/{Region}_SWEmax.npy")
         #convert to cm
         pred_obs['y_test'] = pred_obs['y_test']*2.54
@@ -252,3 +259,65 @@ def Prelim_Eval(cwd,Predictions):
         
     return Performance
 
+
+def save_model_AWS(modelname, Region):
+    
+     #Set AWS connection
+    #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)
+
+   #push model to AWS
+    bucket_name = 'national-snow-model'
+    #Get a list of the necessary files
+    path = f"./Model/{Region}/"
+    files = []
+    for file in os.listdir(path):
+         # check the files which are end with specific extension
+        #if file.endswith(" "):
+            # print path name of selected files
+        files.append(file)
+
+    #Load and push to AWS
+    pbar = ProgressBar()
+    print('Pushing files to AWS')
+    for file in pbar(files):
+        filepath = f"{path}/{file}"
+        s3.meta.client.upload_file(Filename= filepath, Bucket=bucket_name, Key=f"{modelname}/Model/{Region}/{file}")
+
+#function to load model from AWS if needed
+def Load_Model(modelname, Region):
+    #Set AWS connection
+    #load access key
+    home = os.path.expanduser('~')
+    keypath = "apps/AWSaccessKeys.csv"
+    access = pd.read_csv(f"{home}/{keypath}")
+
+    #start session
+    session = boto3.Session(
+        aws_access_key_id=access['Access key ID'][0],
+        aws_secret_access_key=access['Secret access key'][0],
+    )
+
+    s3 = session.resource('s3')
+    #AWS bucket information
+    bucket_name = 'national-snow-model'
+    #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+    bucket = s3.Bucket(bucket_name)
+
+    #download model
+    s3.Bucket(bucket_name).download_file(f"{modelname}/Model/{Region}/{Region}_model.keras", f"./Model/{Region}/{Region}_model.keras")
+    s3.Bucket(bucket_name).download_file(f"{modelname}/Model/{Region}/{Region}_scaler.pkl", f"./Model/{Region}/{Region}_scaler.pkl")
+    s3.Bucket(bucket_name).download_file(f"{modelname}/Model/{Region}/{Region}_SWEmax.npy", f"./Model/{Region}/{Region}_SWEmax.npy")
